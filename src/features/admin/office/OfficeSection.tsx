@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { I } from '../../../constants';
 import { IconOffice } from '../icons';
 import type { OfficeSettingsForm } from './hooks/useAdminOffice';
+import type { ProfileRow } from '../../../types';
+import OfficeCountryTab from './tabs/OfficeCountryTab';
+import OfficeLegalRefTab from './tabs/OfficeLegalRefTab';
+import OfficeNotificationsTab from './tabs/OfficeNotificationsTab';
+
+// ── التابات الفرعية داخل قسم "إعدادات المكتب" ──
+// المرحلة 1: هيكل وتنقل فقط. المحتوى الفعلي لكل تاب بينتقل تباعًا
+// في المراحل 2-4 حسب خطة نقل الإعدادات.
+type OfficeSubTabId = 'office' | 'country' | 'legal' | 'notifications';
+
+interface OfficeSubTab {
+  id: OfficeSubTabId;
+  label: string;
+  icon: string;
+}
+
+const OFFICE_SUB_TABS: OfficeSubTab[] = [
+  { id: 'office',        label: 'بيانات المكتب',   icon: '🏛️' },
+  { id: 'country',       label: 'الدولة',          icon: '🌍' },
+  { id: 'legal',         label: 'المرجع القانوني', icon: '⚖️' },
+  { id: 'notifications', label: 'الإشعارات',       icon: '🔔' },
+];
 
 // شكل عناصر مصفوفات الحقول المحلية (name/slogan/phone/social/...) —
 // بعض الخصائص اختيارية لأن كل مصفوفة بتستخدم مجموعة فرعية مختلفة منها.
@@ -23,12 +45,19 @@ interface OfficeSectionProps {
   setOfficeSettings: React.Dispatch<React.SetStateAction<OfficeSettingsForm>>;
   savingOffice: boolean;
   handleSaveOfficeSettings: () => void | Promise<void>;
+  country: string;
+  onCountryChange: (country: string) => void;
+  profile: ProfileRow | null;
 }
 
 function OfficeSection({
   loadingOffice, logoPreview, setLogoFile, setLogoPreview,
   officeSettings, setOfficeSettings, savingOffice, handleSaveOfficeSettings,
+  country, onCountryChange, profile,
 }: OfficeSectionProps) {
+  // التاب الفرعي الافتراضي يفضل "بيانات المكتب" زي السلوك الحالي
+  const [subTab, setSubTab] = useState<OfficeSubTabId>('office');
+
   return React.createElement('div',{className:"space-y-4 fade-in"},
 
       // ── هيدر ──
@@ -42,7 +71,19 @@ function OfficeSection({
         )
       ),
 
-      loadingOffice
+      // ── شريط التابات الفرعية (نفس نمط التابات المستخدم في AdminPanel) ──
+      React.createElement('div',{className:"flex gap-2 overflow-x-auto no-scrollbar"},
+        OFFICE_SUB_TABS.map((t) => React.createElement('button',{
+          key:t.id,
+          onClick:()=>setSubTab(t.id),
+          className:`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black whitespace-nowrap transition-all ${subTab===t.id?'bg-premium-gold/15 text-premium-gold border border-premium-gold/30':'bg-white/3 text-slate-400 border border-white/5'}`
+        },
+          React.createElement('span',null,t.icon), t.label
+        ))
+      ),
+
+      // ── محتوى تاب "بيانات المكتب" (المحتوى الحالي بدون أي تغيير) ──
+      subTab==='office' && (loadingOffice
         ? React.createElement('div',{className:"flex items-center justify-center py-10 gap-2 text-slate-500 text-xs"},
             React.createElement(I.Spin), "جاري التحميل...")
 
@@ -237,6 +278,16 @@ function OfficeSection({
               : React.createElement(React.Fragment,null, React.createElement('span',null,"💾"), "حفظ إعدادات المكتب")
           )
         )
+      ),
+
+      // ── محتوى تاب "الدولة" (منقول من CountrySettings.tsx — المرحلة 2) ──
+      subTab==='country' && React.createElement(OfficeCountryTab, { currentCountry: country, onCountryChange }),
+
+      // ── محتوى تاب "المرجع القانوني" (منقول من SettingsPage.tsx — المرحلة 3) ──
+      subTab==='legal' && React.createElement(OfficeLegalRefTab, { country }),
+
+      // ── محتوى تاب "الإشعارات (تليجرام)" (منقول من SettingsPage.tsx — المرحلة 4) ──
+      subTab==='notifications' && React.createElement(OfficeNotificationsTab, { profile })
     );
 }
 
