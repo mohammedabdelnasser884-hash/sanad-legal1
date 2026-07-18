@@ -42,6 +42,9 @@ const IconSessions = () => React.createElement('svg',{className:"w-5 h-5",fill:"
 const IconOffice = () => React.createElement('svg',{className:"w-5 h-5",fill:"none",viewBox:"0 0 24 24",strokeWidth:"1.5",stroke:"currentColor"},
   React.createElement('path',{strokeLinecap:"round",strokeLinejoin:"round",d:"M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"}));
 
+const IconArchive = ({className="w-5 h-5"}:{className?:string}) => React.createElement('svg',{className,fill:"none",viewBox:"0 0 24 24",strokeWidth:"1.5",stroke:"currentColor"},
+  React.createElement('path',{strokeLinecap:"round",strokeLinejoin:"round",d:"M20.25 7.5v10.125c0 .621-.504 1.125-1.125 1.125h-14.25a1.125 1.125 0 0 1-1.125-1.125V7.5M3.375 3h17.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125H3.375A1.125 1.125 0 0 1 2.25 6.375v-2.25C2.25 3.504 2.754 3 3.375 3ZM9.75 12h4.5"}));
+
 // ─────────────────────────────────────────
 //  الألوان لكل دور
 // ─────────────────────────────────────────
@@ -68,4 +71,4 @@ const PERMISSION_LABELS = {
 //  مودال تعديل المستخدم
 // ─────────────────────────────────────────
 
-export { IconAdmin, IconToggle, IconKey, IconPortal, IconActivity, IconSecurity, IconLockSm, IconDevices, IconWarning, IconBackup, IconSessions, IconOffice, ROLE_CONFIG, PERMISSION_LABELS };
+export { IconAdmin, IconToggle, IconKey, IconPortal, IconActivity, IconSecurity, IconLockSm, IconDevices, IconWarning, IconBackup, IconSessions, IconOffice, IconArchive, ROLE_CONFIG, PERMISSION_LABELS };
