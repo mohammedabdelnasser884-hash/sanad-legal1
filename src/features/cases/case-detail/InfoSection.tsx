@@ -45,13 +45,24 @@ function InfoSection({ caseData, client, sessions, notes, docs }: InfoSectionPro
                 (caseData.plaintiff || caseData.defendant) && React.createElement('div', {className: "bg-premium-card border border-white/5 rounded-2xl p-4"},
                     React.createElement('p', {className: "text-[9px] font-black text-slate-500 mb-3 tracking-widest"}, "— أطراف الدعوى —"),
                     (() => {
+                        // ⚡ FIX: نفس مبدأ CaseDetailView.tsx — نقرا الصفة من عمود
+                        // plaintiff_role/defendant_role المخصص، ونرجع لـ regex بس
+                        // كـ fallback لصفوف قديمة لسه معندهاش العمود متعبي.
+                        // ⚠️ وبيتقسم بس لو اللي جوه القوسين كلمة صفة قانونية معروفة،
+                        // عشان مايتقطعش جزء من اسم شركة زي "(ش.م.م)".
+                        const knownCapacityPattern = /مدعي|مدعى عليه|مستأنف|طاعن|مطعون ضده|متهم|مجني عليه|محكوم عليه|خصم|مدين|دائن|موكل|وكيل|طالب|مطلوب ضده|منفذ ضده/;
                         const splitParty = (val: string | null | undefined) => {
                             if(!val) return null;
                             const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-                            return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+                            if(m && knownCapacityPattern.test(m[2])) return {name:m[1].trim(), capacity:m[2].trim()};
+                            return {name:val, capacity:''};
                         };
-                        const p = splitParty(caseData.plaintiff);
-                        const d = splitParty(caseData.defendant);
+                        const p = caseData.plaintiff
+                            ? (caseData.plaintiff_role ? {name: caseData.plaintiff, capacity: caseData.plaintiff_role} : splitParty(caseData.plaintiff))
+                            : null;
+                        const d = caseData.defendant
+                            ? (caseData.defendant_role ? {name: caseData.defendant, capacity: caseData.defendant_role} : splitParty(caseData.defendant))
+                            : null;
                         return React.createElement('div', {className: "space-y-3"},
                             p && React.createElement('div', {className: "flex items-center justify-between"},
                                 React.createElement('span', {className: "text-[10px] text-slate-400 font-bold"}, p.capacity || "المدعي / الطاعن"),
