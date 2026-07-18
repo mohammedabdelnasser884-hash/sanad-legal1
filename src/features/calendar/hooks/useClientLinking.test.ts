@@ -18,6 +18,7 @@ function makeMockDb() {
   const clientsInsertSpy = vi.fn();
   const casesUpdateSpy = vi.fn();
   const clientsIlikeSpy = vi.fn();
+  const sessionsUpdateSpy = vi.fn();
 
   const setResult = (key: string, result: Result) => { configured[key] = result; };
   const get = (key: string, fallback: Result) => configured[key] ?? fallback;
@@ -62,10 +63,18 @@ function makeMockDb() {
         })),
       };
     }
+    if (table === 'case_sessions') {
+      return {
+        update: vi.fn((payload: unknown) => {
+          sessionsUpdateSpy(payload);
+          return { eq: vi.fn(() => Promise.resolve(get('sessions:update', { error: null }))) };
+        }),
+      };
+    }
     return {};
   });
 
-  return { from, setResult, casesInsertSpy, clientsInsertSpy, casesUpdateSpy, clientsIlikeSpy };
+  return { from, setResult, casesInsertSpy, clientsInsertSpy, casesUpdateSpy, clientsIlikeSpy, sessionsUpdateSpy };
 }
 
 let mockDb = makeMockDb();
@@ -79,6 +88,9 @@ vi.mock('../../../shared/lib/notifications', () => ({ toast: (...a: unknown[]) =
 const recordError = vi.fn();
 vi.mock('../../../systemHealth', () => ({ recordError: (...a: unknown[]) => recordError(...a) }));
 
+const getCurrentTenantId = vi.fn();
+vi.mock('../../../constants', () => ({ getCurrentTenantId: () => getCurrentTenantId() }));
+
 import { useClientLinking, type SavedFormData } from './useClientLinking';
 import type { Form } from '../NewStandaloneSessionModal';
 
@@ -88,13 +100,14 @@ function makeSavedFormData(overrides: Partial<Form> = {}, caseOverrides: Partial
     plaintiff_power_of_attorney: '', defendant: '', defendant_national_id: '', circuit_number: '',
     ...overrides,
   } as Form;
-  return { form, finalCaseType: 'مدني', fullCaseNumber: '10 لسنة 2026', ...caseOverrides };
+  return { form, finalCaseType: 'مدني', fullCaseNumber: '10 لسنة 2026', sessionId: null, ...caseOverrides };
 }
 
 describe('useClientLinking', () => {
   beforeEach(() => {
     mockDb = makeMockDb();
     vi.clearAllMocks();
+    getCurrentTenantId.mockReturnValue('tenant-1');
   });
 
   describe('handleLinkCase', () => {
@@ -188,6 +201,28 @@ describe('useClientLinking', () => {
       expect(toast).toHaveBeenCalledWith('❌ خطأ غير متوقع', true);
       expect(result.current.linkingCase).toBe(false);
     });
+
+    it('🆕 لو savedFormData فيه sessionId (الجلسة الأصلية) → بعد إنشاء القضية بينفذ UPDATE على case_sessions.case_id بقيمة القضية الجديدة', async () => {
+      mockDb.setResult('cases:insert', { data: { id: 'case-linked-1' }, error: null });
+      mockDb.setResult('clients:select', { data: [], error: null });
+      const saved = makeSavedFormData({}, { sessionId: 'session-abc' });
+      const { result } = renderHook(() => useClientLinking(saved, vi.fn()));
+
+      await act(async () => { await result.current.handleLinkCase(); });
+
+      expect(mockDb.sessionsUpdateSpy).toHaveBeenCalledWith({ case_id: 'case-linked-1' });
+    });
+
+    it('🆕 مفيش sessionId (جلسة اتعملها case مباشرة من غير مرور بالمودال ده) → مفيش أي UPDATE على case_sessions', async () => {
+      mockDb.setResult('cases:insert', { data: { id: 'case-nolink-1' }, error: null });
+      mockDb.setResult('clients:select', { data: [], error: null });
+      const saved = makeSavedFormData({}, { sessionId: null });
+      const { result } = renderHook(() => useClientLinking(saved, vi.fn()));
+
+      await act(async () => { await result.current.handleLinkCase(); });
+
+      expect(mockDb.sessionsUpdateSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleLinkExistingClient', () => {
@@ -274,7 +309,7 @@ describe('useClientLinking', () => {
       await act(async () => { await result.current.handleAddAndLinkClient(); });
 
       expect(mockDb.clientsInsertSpy).toHaveBeenCalledWith([expect.objectContaining({
-        full_name: 'موكل جديد', national_id: '12345',
+        full_name: 'موكل جديد', client_name: 'موكل جديد', tenant_id: 'tenant-1', national_id: '12345',
       })]);
       expect(mockDb.casesUpdateSpy).toHaveBeenCalledWith({ client_id: 'new-client-99' });
       expect(toast).toHaveBeenCalledWith('✅ تمت إضافة الموكل وربطه بالقضية');
@@ -326,6 +361,20 @@ describe('useClientLinking', () => {
       expect(toast).toHaveBeenCalledWith('❌ خطأ غير متوقع', true);
       expect(result.current.linkingToCase).toBe(false);
     });
+
+    it('🆕 مفيش tenant_id متاح (getCurrentTenantId ترجع null) → توست خطأ واضح، ومفيش أي INSERT', async () => {
+      mockDb.setResult('cases:insert', { data: { id: 'case-add-5' }, error: null });
+      mockDb.setResult('clients:select', { data: [], error: null });
+      getCurrentTenantId.mockReturnValue(null);
+      const saved = makeSavedFormData({ plaintiff: 'موكل بدون تينانت' });
+      const { result } = renderHook(() => useClientLinking(saved, vi.fn()));
+      await act(async () => { await result.current.handleLinkCase(); });
+
+      await act(async () => { await result.current.handleAddAndLinkClient(); });
+
+      expect(toast).toHaveBeenCalledWith('❌ تعذر تحديد المكتب الحالي، أعد تحميل الصفحة وحاول مرة أخرى', true);
+      expect(mockDb.clientsInsertSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleAddClientOnly', () => {
@@ -354,7 +403,7 @@ describe('useClientLinking', () => {
       await act(async () => { await result.current.handleAddClientOnly(); });
 
       expect(mockDb.clientsInsertSpy).toHaveBeenCalledWith([expect.objectContaining({
-        full_name: 'موكل مستقل', national_id: '999',
+        full_name: 'موكل مستقل', client_name: 'موكل مستقل', tenant_id: 'tenant-1', national_id: '999',
       })]);
       expect(toast).toHaveBeenCalledWith('✅ تمت إضافة الموكل لقائمة الموكلين');
       expect(result.current.linkingClient).toBe(false);
@@ -380,6 +429,17 @@ describe('useClientLinking', () => {
 
       expect(toast).toHaveBeenCalledWith('❌ خطأ غير متوقع', true);
       expect(result.current.linkingClient).toBe(false);
+    });
+
+    it('🆕 مفيش tenant_id متاح → توست خطأ واضح، ومفيش أي INSERT', async () => {
+      getCurrentTenantId.mockReturnValue(null);
+      const saved = makeSavedFormData({ plaintiff: 'موكل منفرد بدون تينانت' });
+      const { result } = renderHook(() => useClientLinking(saved, vi.fn()));
+
+      await act(async () => { await result.current.handleAddClientOnly(); });
+
+      expect(toast).toHaveBeenCalledWith('❌ تعذر تحديد المكتب الحالي، أعد تحميل الصفحة وحاول مرة أخرى', true);
+      expect(mockDb.clientsInsertSpy).not.toHaveBeenCalled();
     });
   });
 });
