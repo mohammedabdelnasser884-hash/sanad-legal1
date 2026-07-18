@@ -46,6 +46,12 @@ function SessionUpdateModal({ session, caseData, db, onClose, onDone, onNotify }
         if (conflict) { setSaving(false); return; }
 
         // 2. أنشئ جلسة جديدة
+        // ⚠️ الجلسة المستقلة (caseData.id = null) مالهاش صف في جدول cases —
+        // كل بياناتها (العنوان/الموكل/الخصم/المحكمة...) متخزنة على صف الجلسة
+        // نفسه. من غير نسخها هنا، الجلسة الجديدة كانت هتتولد فاضية تمامًا
+        // (بس تاريخ ومطلوب) وتفقد كل هويتها. القضايا الحقيقية مش محتاجة
+        // النسخ ده لأن البيانات بتتجاب من جدول cases عن طريق case_id.
+        const isStandalone = !caseData.id;
         const { error } = await db.from('case_sessions').insert([{
             case_id: caseData.id,
             session_date: nextDate,
@@ -53,6 +59,20 @@ function SessionUpdateModal({ session, caseData, db, onClose, onDone, onNotify }
             session_floor: session.session_floor || null,
             session_hall: session.session_hall || null,
             next_action: nextRequired || null,
+            ...(isStandalone ? {
+                title: session.title || null,
+                case_number: session.case_number || null,
+                court: session.court || null,
+                case_type: session.case_type || null,
+                circuit_number: session.circuit_number || null,
+                plaintiff: session.plaintiff || null,
+                plaintiff_role: session.plaintiff_role || null,
+                plaintiff_national_id: session.plaintiff_national_id || null,
+                plaintiff_power_of_attorney: session.plaintiff_power_of_attorney || null,
+                defendant: session.defendant || null,
+                defendant_role: session.defendant_role || null,
+                defendant_national_id: session.defendant_national_id || null,
+            } : {}),
         }]);
 
         setSaving(false);
