@@ -19,7 +19,7 @@ export type ClientSearchResult = { id: string; full_name: string | null; client_
  *  3) [جديد] بحث يدوي في الموكلين الموجودين بالفعل وربط الجلسة مباشرة
  *     بـ client_id بتاعه (case_sessions.client_id) من غير إنشاء قضية.
  */
-export function useSessionLinking(session: CaseSessionRow, db: SupabaseClient<Database>, onDone: () => void) {
+export function useSessionLinking(session: CaseSessionRow, db: SupabaseClient<Database>, onDone: () => void, onClientAdded?: () => void) {
   const [linkingCase, setLinkingCase] = useState(false);
   const [linkingClient, setLinkingClient] = useState(false);
   const [linkingToCase, setLinkingToCase] = useState(false);
@@ -46,11 +46,17 @@ export function useSessionLinking(session: CaseSessionRow, db: SupabaseClient<Da
         court: session.court || null,
         case_type: session.case_type || null,
         plaintiff: session.plaintiff || null,
+        plaintiff_role: session.plaintiff_role || null,
         plaintiff_national_id: session.plaintiff_national_id || null,
         plaintiff_power_of_attorney: session.plaintiff_power_of_attorney || null,
         defendant: session.defendant || null,
+        defendant_role: session.defendant_role || null,
         defendant_national_id: session.defendant_national_id || null,
         circuit_number: session.circuit_number || null,
+        // ⚡ نفس إصلاح useClientLinking.ts — نقل الصفة والدور/القاعة من
+        // الجلسة لملف القضية الجديد بدل ما يضيعوا.
+        court_floor: session.session_floor || null,
+        session_hall: session.session_hall || null,
         status: 'نشطة',
       }]).select('id').single();
       if (error) {
@@ -110,7 +116,7 @@ export function useSessionLinking(session: CaseSessionRow, db: SupabaseClient<Da
       const { error: linkErr } = await db.from('cases').update({ client_id: data.id }).eq('id', createdCaseId);
       if (linkErr) {
         showErrorToast('session_client_link', linkErr, 'تعذّر ربط الموكل بالقضية. حاول مرة أخرى. لو المشكلة استمرت، تواصل مع الدعم.', 'ربط الموكل بالقضية');
-      } else { toast('✅ تمت إضافة الموكل وربطه بالقضية'); setClientStep('done'); }
+      } else { toast('✅ تمت إضافة الموكل وربطه بالقضية'); setClientStep('done'); onClientAdded?.(); }
     } catch { toast('❌ خطأ غير متوقع', true); }
     finally { setLinkingToCase(false); }
   };
@@ -131,7 +137,7 @@ export function useSessionLinking(session: CaseSessionRow, db: SupabaseClient<Da
       }]);
       if (error) {
         showErrorToast('client_create', error, 'تعذّر إضافة الموكل. تحقق من صحة البيانات. لو المشكلة استمرت، تواصل مع الدعم.', 'إضافة موكل');
-      } else toast('✅ تمت إضافة الموكل لقائمة الموكلين');
+      } else { toast('✅ تمت إضافة الموكل لقائمة الموكلين'); onClientAdded?.(); }
     } catch { toast('❌ خطأ غير متوقع', true); }
     finally { setLinkingClient(false); }
   };
