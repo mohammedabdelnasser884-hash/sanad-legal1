@@ -55,7 +55,7 @@ interface ArchiveSectionProps {
 
   // ─ التبويب النشط (مُدار من AdminPanel عشان يتحكم في أي فetch يتنادى) ─
   archiveTab: ArchiveTabId;
-  setArchiveTab: React.Dispatch<React.SetStateAction<ArchiveTabId>>;
+  setArchiveTab: (tab: ArchiveTabId) => void;
 }
 
 // ── صف عام لعنصر مؤرشف (قضية/موكل/أتعاب) — نفس شكل البطاقة، بمحتوى مختلف ──
