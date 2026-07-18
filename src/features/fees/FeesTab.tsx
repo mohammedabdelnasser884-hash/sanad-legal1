@@ -46,7 +46,7 @@ function FeesTab({cases, clients, showSummaryModal, setShowSummaryModal, country
       payReceiver, setPayReceiver, payClientName, setPayClientName,
       payClientNameText, setPayClientNameText, feesSearch, setFeesSearch,
       feesFilter, setFeesFilter,
-      fetchFees, handleSave, handleAddPayment, handleDeletePayment, handleDelete,
+      fetchFees, handleSave, handleAddPayment, handleDeletePayment, handleDelete, handlePermanentDeleteFee,
       // ── قيم محسوبة من الـ hook (مركزية — لا تُعاد هنا) ──
       fmt, fmtDate,
       feesByCategory, feesSections, feesAfterCategoryFilter, filteredFees,
@@ -295,12 +295,18 @@ function FeesTab({cases, clients, showSummaryModal, setShowSummaryModal, country
 
         // ─ مودال تأكيد حذف الأتعاب الرئيسية ─
         confirmDeleteFee && createPortal(React.createElement(DeleteConfirmModal,{
-            title:"أرشفة الأتعاب",
+            title:"حذف الأتعاب",
             itemName: cases.find((c) =>c.id===confirmDeleteFee.case_id)?.title || fees.find((f) =>f.id===confirmDeleteFee.id)?.case_title || 'غير معروفة',
             itemType:"الأتعاب",
-            mode:"archive",
             loading:false,
-            onConfirm:()=>{ handleDelete(confirmDeleteFee.id); setConfirmDeleteFee(null); },
+            choiceTestId:"archive-confirm-choice",
+            deleteConsequences: [
+                'سيُحذف نهائيًا سجل الأتعاب وكل الدفعات المسجلة عليه.',
+                'الفاتورة الصادرة (لو موجودة) تفضل محفوظة بسجلها المالي كامل — بس رابطها بالأتعاب بيتصفّر.',
+                'لا يمكن التراجع عن هذا الإجراء.',
+            ],
+            onConfirmArchive:()=>{ handleDelete(confirmDeleteFee.id); setConfirmDeleteFee(null); },
+            onConfirmDelete:()=>{ handlePermanentDeleteFee(confirmDeleteFee.id); setConfirmDeleteFee(null); },
             onCancel:()=>setConfirmDeleteFee(null)
         }), document.body),
 
