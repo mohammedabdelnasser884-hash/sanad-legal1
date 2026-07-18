@@ -34,6 +34,14 @@ function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, initial
     // النوع الأعم (CalendarSessionRow) بيغطي كل الاستخدامات التلاتة (Calendar/Missed/Month)
     // لأن MonthSessionRow بيمتد منه فعليًا.
     const [standaloneTarget, setStandaloneTarget] = useState<CalendarSessionRow | null>(null);
+    // ⚡ [جديد] بيزيد كل ما إجراء يحصل على جلسة مستقلة من جوه المودال (ربط
+    // بقضية جديدة، تعديل، حذف، تحديث) — ده اللي بيجبر CalendarTab/MonthListTab/
+    // MissedTab تعيد جلب الجلسات فورًا، عشان لو جلسة اتحولت لقضية عن طريق
+    // زرار "🔗 ربط"، الضغط عليها تاني يفتح صفحة القضية على الجلسات مباشرة
+    // مش يرجع يفتح مودال الجلسة المستقلة القديم (كان بيحصل قبل كده لأن
+    // بيانات التاب كانت فاضلة فاكرة case_id القديم لحد ما تتغيّر الشهر
+    // أو يتبدّل التاب يدويًا).
+    const [refreshKey, setRefreshKey] = useState(0);
 
     // جلب عدد الفائتة لعرضه على الـ badge
     const fetchMissedCount = useCallback(async () => {
@@ -83,7 +91,7 @@ function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, initial
             session: standaloneTarget as unknown as CaseSessionRow,
             db,
             onClose: () => setStandaloneTarget(null),
-            onDone: () => setStandaloneTarget(null),
+            onDone: () => { setStandaloneTarget(null); setRefreshKey((k: number) => k + 1); },
         }),
         React.createElement('div', { className: "space-y-2 fade-in" },
 
@@ -110,9 +118,9 @@ function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, initial
                 }, t.count)
             ))
         ),
-        activeTab === 'month'    && React.createElement(MonthListTab,  { cases, clients, onOpenCase, onOpenReminders, onOpenStandalone: setStandaloneTarget }),
-        activeTab === 'calendar' && React.createElement(CalendarTab,   { cases, clients, onOpenCase, onOpenStandalone: setStandaloneTarget }),
-        activeTab === 'missed'   && React.createElement(MissedTab,     { cases, clients, onOpenCase, onOpenReminders, onOpenStandalone: setStandaloneTarget })
+        activeTab === 'month'    && React.createElement(MonthListTab,  { cases, clients, onOpenCase, onOpenReminders, onOpenStandalone: setStandaloneTarget, refreshKey }),
+        activeTab === 'calendar' && React.createElement(CalendarTab,   { cases, clients, onOpenCase, onOpenStandalone: setStandaloneTarget, refreshKey }),
+        activeTab === 'missed'   && React.createElement(MissedTab,     { cases, clients, onOpenCase, onOpenReminders, onOpenStandalone: setStandaloneTarget, refreshKey })
         )
     );
 }
