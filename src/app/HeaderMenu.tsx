@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { I, COUNTRY_CONFIGS } from '../constants';
+import { I } from '../constants';
 import { toast } from '@/shared/lib/notifications';
 
 // امتداد نوع Window محلي لخاصية __requestPushPermission (بتتضاف فعليًا من main.tsx
@@ -19,14 +19,12 @@ interface HeaderMenuProps {
   darkMode: boolean;
   toggleTheme: () => void;
   handlePwaInstall: () => void | Promise<void>;
-  setShowSettings: (v: boolean) => void;
-  country: string;
   handleLogout: () => void | Promise<void>;
 }
 
 function HeaderMenu({
   showMenu, setShowHeaderMenu, darkMode, toggleTheme, handlePwaInstall,
-  setShowSettings, country, handleLogout,
+  handleLogout,
 }: HeaderMenuProps) {
   return showMenu && createPortal(
             React.createElement(React.Fragment, null,
@@ -68,13 +66,6 @@ function HeaderMenu({
                         className: 'w-full h-10 rounded-xl border flex items-center gap-3 px-3 active:scale-[0.98] transition-all text-sm font-bold',
                         style: { background: 'rgba(212,175,55,0.12)', borderColor: 'rgba(212,175,55,0.35)', color: '#D4AF37' }
                     }, React.createElement('span', { className: 'text-base' }, '📲'), React.createElement('span', null, 'تثبيت التطبيق')),
-                    React.createElement('button', {
-                        onClick: () => { setShowSettings(true); setShowHeaderMenu(false); },
-                        className: 'w-full h-10 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 px-3 active:scale-[0.98] transition-transform text-sm font-bold text-slate-200'
-                    },
-                        React.createElement('span', { className: 'text-base' }, COUNTRY_CONFIGS[country]?.flag || '🌍'),
-                        React.createElement('span', null, 'إعدادات الدولة')
-                    ),
                     React.createElement('div', { className: 'h-px bg-white/10 my-0.5' }),
                     React.createElement('button', {
                         onClick: () => { handleLogout(); setShowHeaderMenu(false); },
