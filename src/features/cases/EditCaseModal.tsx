@@ -283,7 +283,7 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
             // زر الحفظ
             React.createElement('button', {
                 onClick: () => {
-                    if(!form.title.trim()){ toast('يرجى إدخال موضوع الدعوى', true); return; }
+                    if(!form.title.trim()){ toast('يرجى إدخال موضوع ومسمى الدعوى', true); return; }
                     if(!form.client_name.trim()){ toast('يرجى إدخال اسم الموكل', true); return; }
                     if(!form.client_capacity.trim()){ toast('يرجى إدخال صفة الموكل', true); return; }
                     if(!form.opponent.trim()){ toast('يرجى إدخال اسم الخصم', true); return; }
