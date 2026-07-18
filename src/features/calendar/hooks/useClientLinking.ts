@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { toast } from '../../../shared/lib/notifications';
 import { db } from '../../../supabaseClient';
 import { showErrorToast } from '../../../shared/lib/errorReporting';
+import { getCurrentTenantId } from '../../../constants';
 import type { Form } from '../NewStandaloneSessionModal';
 
-export type SavedFormData = { form: Form; finalCaseType: string; fullCaseNumber: string };
+export type SavedFormData = { form: Form; finalCaseType: string; fullCaseNumber: string; sessionId: string | null };
 
 /**
  * منطق إنشاء قضية من بيانات جلسة مستقلة + ربط/إضافة الموكل — منقول حرفيًا
@@ -46,8 +47,19 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
         return;
       }
       toast('✅ تم إنشاء ملف القضية');
-      onSaved(); // تحديث قائمة القضايا فوراً
       setCreatedCaseId(data.id);
+      // ⚡ ربط الجلسة المستقلة الأصلية بالقضية الجديدة — من غير الخطوة دي
+      // الجلسة كانت هتفضل "مستقلة" (case_id = null) حتى بعد إنشاء ملف
+      // القضية، وده كان بيمنع فتح صفحة جلسات القضية عند الضغط عليها تاني.
+      if (savedFormData.sessionId) {
+        const { error: sessionLinkErr } = await db.from('case_sessions')
+          .update({ case_id: data.id })
+          .eq('id', savedFormData.sessionId);
+        if (sessionLinkErr) {
+          showErrorToast('session_case_link', sessionLinkErr, 'تم إنشاء القضية لكن تعذّر ربط الجلسة بها. حاول تحديث الصفحة.', 'ربط الجلسة بالقضية');
+        }
+      }
+      onSaved(); // تحديث قائمة القضايا والجلسات فوراً (بعد اكتمال الربط)
       // ابحث عن الموكل
       const plaintiffName = f.plaintiff?.trim();
       if (!plaintiffName) { setClientStep('notfound'); return; }
@@ -82,15 +94,22 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
       const { form: f } = savedFormData;
       const name = f.plaintiff?.trim();
       if (!name) return;
+      const tenantId = getCurrentTenantId();
+      if (!tenantId) { toast('❌ تعذر تحديد المكتب الحالي، أعد تحميل الصفحة وحاول مرة أخرى', true); return; }
       const { data, error } = await db.from('clients').insert([{
+        // ⚠️ باگ حقيقي كان هنا (اتأكد بالاستعلام على information_schema):
+        // 1) client_name هو العمود الإجباري (NOT NULL) في جدول clients —
+        //    full_name عمود تاني اختياري بيتحدّث معاه، مش بديل عنه. الإدراج
+        //    القديم كان بيبعت full_name بس فيفشل بـ not-null constraint.
+        // 2) tenant_id كان مفقود تمامًا، والـ RLS policy على الجدول
+        //    (tenant_id = current_tenant_id()) كانت بترفض الإدراج بصمت.
+        client_name: name,
         full_name: name,
+        tenant_id: tenantId,
         national_id: f.plaintiff_national_id || null,
-        // ⚠️ باگ حقيقي (اتأكد بالاستعلام على information_schema):
-        // power_of_attorney مش عمود موجود في جدول clients — كان
-        // هيسبب فشل الإدراج فعليًا (أو تجاهل صامت) وقت إضافة موكل
-        // من شاشة الجلسة المستقلة. التوكيل بيتسجل فعلاً على مستوى
-        // الجلسة نفسها (plaintiff_power_of_attorney في case_sessions
-        // فوق)، فمحتاجش يتكرر هنا.
+        // power_of_attorney مش عمود موجود في جدول clients — التوكيل بيتسجل
+        // فعلاً على مستوى الجلسة نفسها (plaintiff_power_of_attorney في
+        // case_sessions فوق)، فمحتاجش يتكرر هنا.
       }]).select('id').single();
       if (error) {
         showErrorToast('client_create', error, 'تعذّر إضافة الموكل. تحقق من صحة البيانات. لو المشكلة استمرت، تواصل مع الدعم.', 'إضافة موكل');
@@ -112,11 +131,17 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
       const { form: f } = savedFormData;
       const name = f.plaintiff?.trim();
       if (!name) return;
+      const tenantId = getCurrentTenantId();
+      if (!tenantId) { toast('❌ تعذر تحديد المكتب الحالي، أعد تحميل الصفحة وحاول مرة أخرى', true); return; }
       const { error } = await db.from('clients').insert([{
+        // نفس الإصلاح المذكور فوق في handleAddAndLinkClient — client_name
+        // هو العمود الإجباري الحقيقي، وtenant_id مطلوب عشان الـ RLS.
+        client_name: name,
         full_name: name,
+        tenant_id: tenantId,
         national_id: f.plaintiff_national_id || null,
-        // ⚠️ نفس ملاحظة handleAddAndLinkClient فوق — power_of_attorney
-        // مش عمود موجود في clients، والتوكيل متسجل على مستوى الجلسة.
+        // power_of_attorney مش عمود موجود في clients، والتوكيل متسجل على
+        // مستوى الجلسة.
       }]);
       if (error) {
         showErrorToast('client_create', error, 'تعذّر إضافة الموكل. تحقق من صحة البيانات. لو المشكلة استمرت، تواصل مع الدعم.', 'إضافة موكل');
