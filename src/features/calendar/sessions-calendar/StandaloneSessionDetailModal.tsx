@@ -8,6 +8,7 @@ import { Inp } from '@/shared/ui/Inp';
 import { Sel } from '@/shared/ui/Sel';
 import SessionUpdateModal from './SessionUpdateModal';
 import DeleteConfirmModal from '@/shared/modals/DeleteConfirmModal';
+import { useSessionLinking } from '../hooks/useSessionLinking';
 import type { CaseSessionRow } from '../../../types';
 import type { MappedCase } from '../../../hooks/useAppData';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -69,6 +70,10 @@ function EditStandaloneModal({ session, db, onClose, onSaved }: EditStandaloneMo
 
     const handleSave = async () => {
         if (!form.session_date) { toast('⚠️ تاريخ الجلسة مطلوب', true); return; }
+        if (!form.title?.trim() || !form.plaintiff?.trim() || !form.defendant?.trim()) {
+            toast('⚠️ يجب ملء الحقول الإجبارية المحددة بعلامة (*)', true);
+            return;
+        }
         setSaving(true);
         const finalCaseType = form.case_type === 'أخرى' ? (form.case_type_custom || 'أخرى') : form.case_type;
         const fullCaseNumber = [form.case_number, form.case_year].filter(Boolean).join('/');
@@ -122,7 +127,7 @@ function EditStandaloneModal({ session, db, onClose, onSaved }: EditStandaloneMo
                     style: { maxHeight: 'calc(92vh - 130px)' }
                 },
                     React.createElement(Inp, { label: 'المحكمة', value: form.court, onChange: set('court'), placeholder: 'مثال: محكمة جنوب القاهرة' }),
-                    React.createElement(Inp, { label: 'موضوع الجلسة / عنوان', value: form.title, onChange: set('title'), placeholder: 'مثال: قضية إيجار' }),
+                    React.createElement(Inp, { label: 'موضوع الجلسة / عنوان', required: true, value: form.title, onChange: set('title'), placeholder: 'مثال: قضية إيجار' }),
                     React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
                         React.createElement(Inp, { label: 'رقم القضية', value: form.case_number, onChange: set('case_number'), placeholder: '1234' }),
                         React.createElement(Inp, { label: 'السنة', value: form.case_year, onChange: set('case_year'), placeholder: '2024' })
@@ -141,7 +146,7 @@ function EditStandaloneModal({ session, db, onClose, onSaved }: EditStandaloneMo
                     ),
                     React.createElement('div', { className: 'border-t border-white/5 my-1' }),
                     React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-                        React.createElement(Inp, { label: 'الموكل', value: form.plaintiff, onChange: set('plaintiff'), placeholder: 'الاسم بالكامل' }),
+                        React.createElement(Inp, { label: 'الموكل', required: true, value: form.plaintiff, onChange: set('plaintiff'), placeholder: 'الاسم بالكامل' }),
                         React.createElement(Inp, { label: 'الصفة', value: form.plaintiff_role, onChange: set('plaintiff_role'), placeholder: 'مدعي، مستأنف' })
                     ),
                     React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
@@ -150,7 +155,7 @@ function EditStandaloneModal({ session, db, onClose, onSaved }: EditStandaloneMo
                     ),
                     React.createElement('div', { className: 'border-t border-white/5 my-1' }),
                     React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-                        React.createElement(Inp, { label: 'الخصم', value: form.defendant, onChange: set('defendant'), placeholder: 'الاسم بالكامل' }),
+                        React.createElement(Inp, { label: 'الخصم', required: true, value: form.defendant, onChange: set('defendant'), placeholder: 'الاسم بالكامل' }),
                         React.createElement(Inp, { label: 'الصفة', value: form.defendant_role, onChange: set('defendant_role'), placeholder: 'مدعى عليه' })
                     ),
                     React.createElement(Inp, { label: 'الرقم القومي للخصم', value: form.defendant_national_id, onChange: set('defendant_national_id'), placeholder: '14 رقم' }),
@@ -171,6 +176,198 @@ function EditStandaloneModal({ session, db, onClose, onSaved }: EditStandaloneMo
     );
 }
 
+// ══════════════════════════════════════════
+//  موديل "🔗 ربط" — متاح في أي وقت على جلسة مستقلة محفوظة بالفعل
+//  (نفس خيارات البوب أب اللي بيظهر أول مرة بعد الحفظ + خيار جديد:
+//  ربط بموكل موجود بالفعل من غير إنشاء قضية)
+// ══════════════════════════════════════════
+interface LinkSessionModalProps {
+    session: CaseSessionRow;
+    db: SupabaseClient<Database>;
+    onClose: () => void;
+    onDone: () => void;
+    // ⚠️ [مهم] لازم يتنادى (مش onClose بس) في أي خطوة بعد ما قضية جديدة
+    // اتعملت فعلاً (found/notfound/done) — عشان يقفل StandaloneSessionDetailModal
+    // بالكامل وراه، مش موديل الربط بس. لو سبناه مفتوح، هيفضل شايل نسخة
+    // قديمة من الجلسة (case_id: null) في الذاكرة رغم إنها بقت مربوطة
+    // فعليًا في الداتابيز — ولو المستخدم دوس "🗑 حذف" من هنا هيحذف جلسة
+    // بقت جزء من قضية حقيقية من غير ما ياخد باله.
+    onFullClose: () => void;
+}
+
+function LinkSessionModal({ session, db, onClose, onDone, onFullClose }: LinkSessionModalProps) {
+    const {
+        linkingCase, linkingClient, linkingToCase, linkingExisting,
+        clientStep, setClientStep, foundClient,
+        clientSearch, searchResults, searching, selectedExistingClient, setSelectedExistingClient,
+        handleLinkCase, handleLinkExistingClient, handleAddAndLinkClient, handleAddClientOnly,
+        searchExistingClients, confirmLinkToExistingClient,
+    } = useSessionLinking(session, db, onDone);
+
+    const hasPlaintiff = !!session.plaintiff?.trim();
+
+    return createPortal(
+        React.createElement('div', {
+            className: 'fixed inset-0 z-[60] flex items-center justify-center px-4',
+            style: { background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)' }
+        },
+            React.createElement('div', {
+                className: 'w-full max-w-sm rounded-3xl p-6 space-y-4',
+                style: { background: '#0f1623', border: '1px solid rgba(255,255,255,0.08)' }
+            },
+
+                // ── Step: idle — الخيارات الأساسية ──
+                clientStep === 'idle' && React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'text-center space-y-1' },
+                        React.createElement('div', { className: 'text-2xl' }, '🔗'),
+                        React.createElement('h3', { className: 'text-sm font-black text-white' }, 'ربط الجلسة'),
+                        React.createElement('p', { className: 'text-[11px] text-slate-400' }, 'اختر الإجراء المطلوب')
+                    ),
+                    React.createElement('div', { className: 'space-y-2 pt-1' },
+                        React.createElement('button', {
+                            onClick: handleLinkCase,
+                            disabled: linkingCase,
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '⚖️'),
+                            React.createElement('span', null, linkingCase ? '⏳ جاري الإنشاء...' : 'إنشاء ملف قضية من هذه البيانات')
+                        ),
+                        hasPlaintiff && React.createElement('button', {
+                            onClick: handleAddClientOnly,
+                            disabled: linkingClient,
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '👤'),
+                            React.createElement('span', null, linkingClient ? '⏳ جاري الإضافة...' : 'إضافة الموكل لقائمة الموكلين فقط')
+                        ),
+                        React.createElement('button', {
+                            onClick: () => setClientStep('searching'),
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '🔗'),
+                            React.createElement('span', null, 'ربط بموكل موجود بالفعل')
+                        )
+                    ),
+                    React.createElement('button', {
+                        onClick: onClose,
+                        className: 'w-full py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-300 transition-all'
+                    }, 'إغلاق')
+                ),
+
+                // ── Step: searching — بحث يدوي في الموكلين الموجودين ──
+                clientStep === 'searching' && React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'text-center space-y-1' },
+                        React.createElement('div', { className: 'text-2xl' }, '🔍'),
+                        React.createElement('h3', { className: 'text-sm font-black text-white' }, 'ابحث عن موكل موجود'),
+                        React.createElement('p', { className: 'text-[11px] text-slate-400' }, 'بالاسم أو الرقم القومي أو الهاتف')
+                    ),
+                    React.createElement('input', {
+                        value: clientSearch,
+                        onChange: (e: React.ChangeEvent<HTMLInputElement>) => searchExistingClients(e.target.value),
+                        placeholder: 'اكتب اسم الموكل...',
+                        className: inputCls,
+                        style: inputStyle
+                    }),
+                    React.createElement('div', { className: 'max-h-48 overflow-y-auto space-y-1.5' },
+                        searching && React.createElement('p', { className: 'text-[10px] text-slate-500 text-center py-2' }, '⏳ جاري البحث...'),
+                        !searching && clientSearch.trim() && searchResults.length === 0 && React.createElement('p', { className: 'text-[10px] text-slate-500 text-center py-2' }, 'لا توجد نتائج'),
+                        !searching && searchResults.map((c) => React.createElement('button', {
+                            key: c.id,
+                            onClick: () => setSelectedExistingClient(c),
+                            className: `w-full text-right p-2.5 rounded-xl text-[11px] border transition-all ${selectedExistingClient?.id === c.id ? 'border-premium-gold bg-premium-gold/10 text-premium-gold' : 'border-white/10 bg-white/5 text-slate-300'}`
+                        }, (c.client_name || c.full_name || 'بدون اسم') + (c.national_id ? ' — ' + c.national_id : '')))
+                    ),
+                    selectedExistingClient && React.createElement('div', { className: 'p-2.5 rounded-xl bg-premium-gold/10 border border-premium-gold/20 text-[11px] text-premium-gold' },
+                        '✓ الموكل المختار: ' + (selectedExistingClient.client_name || selectedExistingClient.full_name || '—')
+                    ),
+                    selectedExistingClient && React.createElement('button', {
+                        onClick: confirmLinkToExistingClient,
+                        disabled: linkingExisting,
+                        className: 'w-full py-3 rounded-2xl text-xs font-black text-premium-bg transition-all disabled:opacity-40',
+                        style: { background: linkingExisting ? '#888' : 'linear-gradient(135deg,#d4af37,#f0c040)' }
+                    }, linkingExisting ? '⏳ جاري الربط...' : '🔗 تأكيد الربط'),
+                    React.createElement('button', {
+                        onClick: () => setClientStep('idle'),
+                        className: 'w-full py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-300 transition-all'
+                    }, 'رجوع')
+                ),
+
+                // ── Step: found — بعد إنشاء القضية، لقينا موكل مطابق ──
+                clientStep === 'found' && React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'text-center space-y-1' },
+                        React.createElement('div', { className: 'text-2xl' }, '👤'),
+                        React.createElement('h3', { className: 'text-sm font-black text-white' }, 'وجدنا موكلاً مطابقاً'),
+                        React.createElement('p', { className: 'text-[11px] text-slate-400' }, 'هل تريد ربط القضية الجديدة بـ'),
+                        React.createElement('p', { className: 'text-xs font-bold text-premium-gold mt-1' }, foundClient?.full_name)
+                    ),
+                    React.createElement('div', { className: 'space-y-2 pt-1' },
+                        React.createElement('button', {
+                            onClick: handleLinkExistingClient,
+                            disabled: linkingToCase,
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '🔗'),
+                            React.createElement('span', null, linkingToCase ? '⏳ جاري الربط...' : 'نعم، ربط بهذا الموكل')
+                        ),
+                        React.createElement('button', {
+                            onClick: handleAddAndLinkClient,
+                            disabled: linkingToCase,
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '➕'),
+                            React.createElement('span', null, 'إضافة موكل جديد وربطه')
+                        )
+                    ),
+                    React.createElement('button', {
+                        onClick: onFullClose,
+                        className: 'w-full py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-300 transition-all'
+                    }, 'تخطي')
+                ),
+
+                // ── Step: notfound — بعد إنشاء القضية، مفيش موكل مطابق ──
+                clientStep === 'notfound' && React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'text-center space-y-1' },
+                        React.createElement('div', { className: 'text-2xl' }, '👤'),
+                        React.createElement('h3', { className: 'text-sm font-black text-white' }, 'ربط الموكل بالقضية'),
+                        React.createElement('p', { className: 'text-[11px] text-slate-400' }, hasPlaintiff
+                            ? `"${session.plaintiff}" غير موجود في الموكلين`
+                            : 'لا يوجد اسم موكل في البيانات')
+                    ),
+                    hasPlaintiff && React.createElement('div', { className: 'space-y-2 pt-1' },
+                        React.createElement('button', {
+                            onClick: handleAddAndLinkClient,
+                            disabled: linkingToCase,
+                            className: 'w-full py-3 rounded-2xl text-xs font-bold text-white border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-40 flex items-center justify-center gap-2'
+                        },
+                            React.createElement('span', null, '➕'),
+                            React.createElement('span', null, linkingToCase ? '⏳ جاري الإضافة...' : 'إضافة الموكل وربطه بالقضية')
+                        )
+                    ),
+                    React.createElement('button', {
+                        onClick: onFullClose,
+                        className: 'w-full py-2.5 rounded-2xl text-xs font-bold text-slate-500 hover:text-slate-300 transition-all'
+                    }, 'تخطي')
+                ),
+
+                // ── Step: done ──
+                clientStep === 'done' && React.createElement(React.Fragment, null,
+                    React.createElement('div', { className: 'text-center space-y-2 py-2' },
+                        React.createElement('div', { className: 'text-3xl' }, '🎉'),
+                        React.createElement('h3', { className: 'text-sm font-black text-white' }, 'تم بنجاح'),
+                        React.createElement('p', { className: 'text-[11px] text-slate-400' }, 'تم تنفيذ الربط بنجاح')
+                    ),
+                    React.createElement('button', {
+                        onClick: onFullClose,
+                        className: 'w-full py-3 rounded-2xl text-xs font-black text-premium-bg transition-all',
+                        style: { background: 'linear-gradient(135deg,#d4af37,#f0c040)' }
+                    }, 'إغلاق')
+                )
+            )
+        ),
+        document.body
+    );
+}
+
 interface StandaloneSessionDetailModalProps {
     session: CaseSessionRow;
     db: SupabaseClient<Database>;
@@ -182,8 +379,11 @@ interface StandaloneSessionDetailModalProps {
 function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify }: StandaloneSessionDetailModalProps) {
     const [showUpdate, setShowUpdate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
+    const [showLink, setShowLink] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    // الزرار "🔗 ربط" بيتاح بس لو الجلسة لسه مش مربوطة لا بقضية ولا بموكل
+    const isAlreadyLinked = !!(session.case_id || session.client_id);
 
     // كائن قضية اصطناعي خفيف بيتبنى من بيانات الجلسة المستقلة نفسها (مفيش قضية حقيقية أصلاً)
     // عشان يتمرر لـ SessionUpdateModal اللي بيتوقع caseData: MappedCase — نفس القيم بالظبط
@@ -286,8 +486,8 @@ function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify }
                         onClick: onClose,
                         className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-400 bg-white/5 hover:bg-white/10 transition-all'
                     }, 'إغلاق'),
-                    React.createElement('button', {
-                        onClick: () => toast('🔗 قريباً', false),
+                    !isAlreadyLinked && React.createElement('button', {
+                        onClick: () => setShowLink(true),
                         className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all'
                     }, '🔗 ربط'),
                     React.createElement('button', {
@@ -325,6 +525,12 @@ function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify }
             onClose: () => setShowUpdate(false),
             onDone: () => { onDone(); onClose(); },
             onNotify
+        }),
+        showLink && React.createElement(LinkSessionModal, {
+            session, db,
+            onClose: () => setShowLink(false),
+            onDone,
+            onFullClose: () => { setShowLink(false); onDone(); onClose(); }
         })
     );
 }
