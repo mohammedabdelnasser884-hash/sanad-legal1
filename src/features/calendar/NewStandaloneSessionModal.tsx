@@ -96,7 +96,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
     const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [postSaveModal, setPostSaveModal] = useState(false);
-    const [savedFormData, setSavedFormData] = useState<{ form: Form; finalCaseType: string; fullCaseNumber: string } | null>(null);
+    const [savedFormData, setSavedFormData] = useState<{ form: Form; finalCaseType: string; fullCaseNumber: string; sessionId: string | null } | null>(null);
     const {
         linkingCase, linkingClient, linkingToCase,
         createdCaseId, setCreatedCaseId,
@@ -118,9 +118,15 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
     const handleSave = async () => {
         if (!form.session_date) { toast('⚠️ تاريخ الجلسة مطلوب', true); return; }
         if (linkMode === 'existing' && !selectedCaseId) { toast('⚠️ اختر القضية أولاً', true); return; }
+        if (linkMode === 'standalone') {
+            if (!form.title?.trim() || !form.plaintiff?.trim() || !form.defendant?.trim()) {
+                toast('⚠️ يجب ملء الحقول الإجبارية المحددة بعلامة (*)', true);
+                return;
+            }
+        }
         setSaving(true);
         try {
-            const { error } = await db.from('case_sessions').insert([{
+            const { data: sessionData, error } = await db.from('case_sessions').insert([{
                 case_id: linkMode === 'existing' ? selectedCaseId : null,
                 session_date: form.session_date,
                 session_time: form.session_time || null,
@@ -141,7 +147,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
                 description: form.description || null,
                 result: form.result || null,
                 next_action: form.next_action || null,
-            }]);
+            }]).select('id').single();
 
             if (error) {
                 showErrorToast('session_save', error, 'تعذّر حفظ الجلسة. حاول مرة أخرى. لو المشكلة استمرت، تواصل مع الدعم.', 'حفظ الجلسة');
@@ -190,7 +196,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
 
             toast('✅ تمت إضافة الجلسة المستقلة');
             onSaved();
-            setSavedFormData({ form, finalCaseType, fullCaseNumber });
+            setSavedFormData({ form, finalCaseType, fullCaseNumber, sessionId: sessionData?.id || null });
             setPostSaveModal(true);
         } catch {
             toast('❌ حدث خطأ غير متوقع، حاول مرة أخرى', true);
@@ -401,6 +407,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
                 // موضوع الجلسة / عنوان
                 React.createElement(Inp, {
                     label: 'موضوع الجلسة / عنوان',
+                    required: true,
                     value: form.title,
                     onChange: set('title'),
                     placeholder: 'مثال: قضية إيجار — استئناف'
@@ -475,6 +482,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
                 React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
                     React.createElement(Inp, {
                         label: 'الموكل',
+                        required: true,
                         value: form.plaintiff,
                         onChange: set('plaintiff'),
                         placeholder: 'الاسم بالكامل'
@@ -508,6 +516,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
                 React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
                     React.createElement(Inp, {
                         label: 'الخصم',
+                        required: true,
                         value: form.defendant,
                         onChange: set('defendant'),
                         placeholder: 'الاسم بالكامل'
