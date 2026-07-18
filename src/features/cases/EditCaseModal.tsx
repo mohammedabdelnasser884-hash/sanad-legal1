@@ -103,26 +103,14 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
 
             // الموكل + صفته
             React.createElement('div', {className:"grid grid-cols-2 gap-2"},
-                React.createElement('div', null,
-                    React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "الموكل"),
-                    React.createElement('input', {value:form.client_name, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_name',e.target.value), placeholder:"اسم الموكل", className:inputCls, style:inpStyle})
-                ),
-                React.createElement('div', null,
-                    React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "صفة الموكل"),
-                    React.createElement('input', {value:form.client_capacity, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_capacity',e.target.value), placeholder:"مثال: مدعي / متهم...", className:inputCls, style:inpStyle})
-                )
+                React.createElement(Inp, {label:"الموكل", value:form.client_name, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_name',e.target.value), placeholder:"اسم الموكل", required:true, 'data-testid':'edit-case-client-name'}),
+                React.createElement(Inp, {label:"صفة الموكل", value:form.client_capacity, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_capacity',e.target.value), placeholder:"مثال: مدعي / متهم...", required:true, 'data-testid':'edit-case-client-capacity'})
             ),
 
             // الخصم + صفته
             React.createElement('div', {className:"grid grid-cols-2 gap-2"},
-                React.createElement('div', null,
-                    React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "الخصم"),
-                    React.createElement('input', {value:form.opponent, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent',e.target.value), placeholder:"اسم الخصم", className:inputCls, style:inpStyle})
-                ),
-                React.createElement('div', null,
-                    React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "صفة الخصم"),
-                    React.createElement('input', {value:form.opponent_capacity, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent_capacity',e.target.value), placeholder:"مثال: مدعى عليه...", className:inputCls, style:inpStyle})
-                )
+                React.createElement(Inp, {label:"الخصم", value:form.opponent, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent',e.target.value), placeholder:"اسم الخصم", required:true, 'data-testid':'edit-case-opponent'}),
+                React.createElement(Inp, {label:"صفة الخصم", value:form.opponent_capacity, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent_capacity',e.target.value), placeholder:"مثال: مدعى عليه...", required:true, 'data-testid':'edit-case-opponent-capacity'})
             ),
 
             // ── بيانات القيد الرسمي ──
@@ -234,12 +222,11 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
             // ٧. حالة القضية
             React.createElement('div', null,
                 React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "حالة القضية"),
-                React.createElement('div', {className:"grid grid-cols-2 gap-2"},
+                React.createElement('div', {className:"grid grid-cols-3 gap-2"},
                     [
                         {val:'نشطة',   emoji:'🟢', color:'emerald'},
                         {val:'مؤجلة',  emoji:'🟡', color:'amber'},
-                        {val:'منتهية', emoji:'🔴', color:'rose'},
-                        {val:'مغلقة',  emoji:'🔒', color:'slate'},
+                        {val:'منتهية', emoji:'✅', color:'emerald'},
                     ].map(({val,emoji,color})=>
                         React.createElement('button',{
                             key:val, type:"button",
@@ -248,7 +235,6 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
                                 form.status===val
                                     ? color==='emerald' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
                                     : color==='amber'   ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                                    : color==='rose'    ? 'bg-rose-500/20 border-rose-500/50 text-rose-300'
                                     :                     'bg-slate-500/20 border-slate-500/50 text-slate-300'
                                     : 'bg-white/5 border-white/10 text-slate-500'
                             }`
@@ -279,6 +265,10 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
             React.createElement('button', {
                 onClick: () => {
                     if(!form.title.trim()){ toast('يرجى إدخال موضوع الدعوى', true); return; }
+                    if(!form.client_name.trim()){ toast('يرجى إدخال اسم الموكل', true); return; }
+                    if(!form.client_capacity.trim()){ toast('يرجى إدخال صفة الموكل', true); return; }
+                    if(!form.opponent.trim()){ toast('يرجى إدخال اسم الخصم', true); return; }
+                    if(!form.opponent_capacity.trim()){ toast('يرجى إدخال صفة الخصم', true); return; }
                     const number = form.caseNum&&form.caseYear ? form.caseNum+'/'+form.caseYear : form.caseNum||form.caseYear||'';
                     const finalCourtLevel = form.court_level==='أخرى' ? form.court_level_other : form.court_level;
                     const finalCourt = form.court==='أخرى' ? (form.court_other||'—') : (form.court||'—');
