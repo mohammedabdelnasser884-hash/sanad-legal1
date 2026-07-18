@@ -131,13 +131,24 @@ export function useCaseDetailActions(
     const safeCaseType = escapeHtml(caseData.type || '—');
     const safeCaseCourt = escapeHtml(caseData.court || '—');
     const safeClientName = escapeHtml(client?.full_name || '—');
+    // ⚡ FIX: نفس مبدأ CaseDetailView.tsx/InfoSection.tsx — نقرا الصفة من
+    // عمود plaintiff_role/defendant_role المخصص، ونرجع لـ regex بس كـ
+    // fallback لصفوف قديمة لسه معندهاش العمود متعبي.
+    // ⚠️ وبيتقسم بس لو اللي جوه القوسين كلمة صفة قانونية معروفة، عشان
+    // مايتقطعش جزء من اسم شركة زي "(ش.م.م)" في ملف PDF رسمي.
+    const knownCapacityPattern = /مدعي|مدعى عليه|مستأنف|طاعن|مطعون ضده|متهم|مجني عليه|محكوم عليه|خصم|مدين|دائن|موكل|وكيل|طالب|مطلوب ضده|منفذ ضده/;
     const splitParty = (val: string | null | undefined) => {
         if(!val) return null;
         const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-        return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+        if(m && knownCapacityPattern.test(m[2])) return {name:m[1].trim(), capacity:m[2].trim()};
+        return {name:val, capacity:''};
     };
-    const plaintiffParty = splitParty(caseData.plaintiff);
-    const defendantParty = splitParty(caseData.defendant);
+    const plaintiffParty = caseData.plaintiff
+        ? (caseData.plaintiff_role ? {name: caseData.plaintiff, capacity: caseData.plaintiff_role} : splitParty(caseData.plaintiff))
+        : null;
+    const defendantParty = caseData.defendant
+        ? (caseData.defendant_role ? {name: caseData.defendant, capacity: caseData.defendant_role} : splitParty(caseData.defendant))
+        : null;
     const safePlaintiffName = escapeHtml(plaintiffParty?.name || '');
     const safePlaintiffLabel = escapeHtml(plaintiffParty?.capacity || 'المدعي / الطاعن');
     const safeDefendantName = escapeHtml(defendantParty?.name || '');
