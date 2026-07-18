@@ -33,6 +33,17 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
     };
     const split = splitNum(caseData.number);
 
+    // ⚡ توحيد منطق مكان الجلسة: كان فيه حقلين منفصلين (court_floor +
+    // court_hall) بالإضافة لحقل session_hall في "بيانات إضافية" —
+    // نفس المعنى مكرر في 3 حقول. من دلوقتي session_hall هو المصدر
+    // الوحيد. لو القضية قديمة ومعندهاش session_hall لكن عندها
+    // court_floor/court_hall، بندمجهم هنا مرة واحدة عشان البيانات
+    // القديمة متضيعش (بدون ما نلمس الأعمدة القديمة في الداتابيز).
+    const mergedSessionHall = caseData.session_hall || [
+        caseData.court_floor ? `الدور ${caseData.court_floor}` : '',
+        caseData.court_hall ? `قاعة ${caseData.court_hall}` : '',
+    ].filter(Boolean).join(' - ');
+
     // ⚡ FIX: الموكل والصفة كانوا بيتقروا بـ regex من نص plaintiff نفسه
     // (نمط "الاسم (الصفة)") — ده كان بيتعارض مع عمود plaintiff_role/
     // defendant_role الموجود فعليًا في جدول cases (ومُستخدم بالفعل في
@@ -91,7 +102,7 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
         client_capacity: clientParts.capacity,
         opponent: opponentParts.name,
         opponent_capacity: opponentParts.capacity,
-        session_hall: caseData.session_hall || '',
+        session_hall: mergedSessionHall,
         secretary_hall: caseData.secretary_hall || '',
         secretary_name: caseData.secretary_name || '',
     });
@@ -224,16 +235,6 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
                             className:`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all active:scale-95 ${form.session_time===t?'bg-premium-gold text-premium-bg':'bg-white/5 border border-white/10 text-slate-400'}`
                         },t==='صباحي'?'🌅 صباحي':'🌆 مسائي'))
                     )
-                ),
-                React.createElement('div',{className:"grid grid-cols-2 gap-2"},
-                    React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"الطابق"),
-                        React.createElement('input',{value:form.court_floor,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('court_floor',e.target.value),placeholder:"مثال: الأول",className:inputCls,style:inpStyle})
-                    ),
-                    React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"رقم القاعة"),
-                        React.createElement('input',{value:form.court_hall,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('court_hall',e.target.value),placeholder:"مثال: 5",className:inputCls,style:inpStyle})
-                    )
                 )
             ),
 
@@ -267,8 +268,8 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
             ),
 
             React.createElement('div', null,
-                React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "قاعة الجلسة"),
-                React.createElement('input', {value:form.session_hall, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('session_hall',e.target.value), placeholder:"رقم أو اسم قاعة الجلسة", className:inputCls, style:inpStyle})
+                React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "الطابق وقاعة الجلسة"),
+                React.createElement('input', {value:form.session_hall, onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('session_hall',e.target.value), placeholder:"مثال: الدور الأول - قاعة 5", className:inputCls, style:inpStyle})
             ),
             React.createElement('div', null,
                 React.createElement('label', {className:"block text-[10px] font-bold text-slate-400 mb-1.5"}, "قاعة سكرتير الجلسة"),
