@@ -13,6 +13,7 @@ interface SessionsCalendarProps {
     clients: MappedClient[];
     onOpenCase: (c: MappedCase) => void;
     onOpenReminders: () => void;
+    onClientAdded?: () => void;
     initialTab?: 'month' | 'calendar' | 'missed';
 }
 
@@ -28,7 +29,7 @@ interface OverdueReminderRow {
     done: boolean;
 }
 
-function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, initialTab }: SessionsCalendarProps) {
+function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, onClientAdded, initialTab }: SessionsCalendarProps) {
     const [activeTab, setActiveTab] = useState<'month'|'calendar'|'missed'>(initialTab || 'calendar');
     const [missedCount, setMissedCount] = useState(0);
     // النوع الأعم (CalendarSessionRow) بيغطي كل الاستخدامات التلاتة (Calendar/Missed/Month)
@@ -92,6 +93,7 @@ function SessionsCalendar({ cases, clients, onOpenCase, onOpenReminders, initial
             db,
             onClose: () => setStandaloneTarget(null),
             onDone: () => { setStandaloneTarget(null); setRefreshKey((k: number) => k + 1); },
+            onClientAdded,
         }),
         React.createElement('div', { className: "space-y-2 fade-in" },
 
