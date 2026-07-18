@@ -84,9 +84,10 @@ function Field({ label, required = false, children }: { label: string; required?
 const inputCls = 'w-full p-3 text-xs rounded-xl border border-white/10 bg-premium-bg text-white placeholder-slate-600';
 const inputStyle = { fontFamily: 'Cairo,sans-serif' };
 
-export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, cases = [] }: {
+export default function NewStandaloneSessionModal({ onClose, onSaved, onClientAdded, onNotify, cases = [] }: {
     onClose: () => void;
     onSaved: () => void;
+    onClientAdded?: () => void;
     onNotify?: (msg: string) => void;
     cases?: MappedCase[];
 }) {
@@ -103,7 +104,7 @@ export default function NewStandaloneSessionModal({ onClose, onSaved, onNotify, 
         clientStep, setClientStep,
         foundClient, setFoundClient,
         handleLinkCase, handleLinkExistingClient, handleAddAndLinkClient, handleAddClientOnly,
-    } = useClientLinking(savedFormData, onSaved);
+    } = useClientLinking(savedFormData, onSaved, onClientAdded);
 
     const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm((f: Form) => ({ ...f, [k]: e.target.value }));
 
