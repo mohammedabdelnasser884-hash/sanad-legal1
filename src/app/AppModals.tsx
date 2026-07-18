@@ -64,6 +64,8 @@ interface AppModalsProps {
     fetchCases: (page?: number, filter?: string) => Promise<void>;
     fetchTodaySessions: () => Promise<void>;
     fetchUpcomingSessions: () => Promise<void>;
+    fetchClients: (page?: number, search?: string) => void | Promise<void>;
+    clientSearch: string;
 
     // ── هاندلرز ──
     handleSaveCase: (form: CaseFormSubmitData) => void | Promise<void>;
@@ -95,6 +97,7 @@ function AppModals({
     setSelectedCase, setSelectedClient, _setDeleteConfirm, _setSelectedClient, _setSelectedCase,
     setCases, setCasesFilter, setCasesPage,
     fetchCases, fetchTodaySessions, fetchUpcomingSessions,
+    fetchClients, clientSearch,
     handleSaveCase, handleDeleteCase, handleUpdateCase,
     handleSaveClient, handleDeleteClient, handleUpdateClient, handleSaveLawyer,
     sendTelegram,
@@ -133,6 +136,7 @@ function AppModals({
         showNewSessionModal && React.createElement(NewStandaloneSessionModal, {
             onClose: () => setShowNewSessionModal(false),
             onSaved: () => { fetchTodaySessions(); fetchUpcomingSessions(); fetchCases(0, casesFilter); },
+            onClientAdded: () => { fetchClients(0, clientSearch); },
             onNotify: sendTelegram,
             cases,
         }),
