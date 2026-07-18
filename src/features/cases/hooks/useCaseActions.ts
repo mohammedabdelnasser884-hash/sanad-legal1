@@ -22,7 +22,9 @@ export interface CaseFormSubmitData {
     status?: string;
     client_id?: string;
     plaintiff?: string;
+    plaintiff_role?: string;
     defendant?: string;
+    defendant_role?: string;
     court_level?: string;
     circuit_number?: string;
     date?: string;
@@ -115,7 +117,9 @@ export function useCaseActions(params: {
             status: 'نشطة',
             client_id: form.client_id || null,
             plaintiff: form.plaintiff || null,
+            plaintiff_role: form.plaintiff_role || null,
             defendant: form.defendant || null,
+            defendant_role: form.defendant_role || null,
             court_level: form.court_level || null,
             circuit_number: form.circuit_number || null,
             next_hearing: form.date || null,
@@ -198,8 +202,10 @@ export function useCaseActions(params: {
             caseMsg += `📌 <b>الموضوع:</b> ${escapeTelegramHtml(form.title)}\n`;
             caseMsg += `🏛 <b>المحكمة:</b> ${escapeTelegramHtml(form.court || '—')}\n`;
             caseMsg += `📂 <b>التصنيف:</b> ${escapeTelegramHtml(form.type || '—')}\n`;
-            if (form.plaintiff) caseMsg += `🟢 <b>المدعي:</b> ${escapeTelegramHtml(form.plaintiff)}\n`;
-            if (form.defendant) caseMsg += `🔴 <b>المدعى عليه:</b> ${escapeTelegramHtml(form.defendant)}\n`;
+            // ⚡ FIX: الصفة بقت حقل منفصل (plaintiff_role/defendant_role) بدل ما تكون
+            // متضمنة جوه نص plaintiff/defendant — نضيفها هنا صراحةً عشان الرسالة متفقدش المعلومة.
+            if (form.plaintiff) caseMsg += `🟢 <b>المدعي:</b> ${escapeTelegramHtml(form.plaintiff)}${form.plaintiff_role ? ' — ' + escapeTelegramHtml(form.plaintiff_role) : ''}\n`;
+            if (form.defendant) caseMsg += `🔴 <b>المدعى عليه:</b> ${escapeTelegramHtml(form.defendant)}${form.defendant_role ? ' — ' + escapeTelegramHtml(form.defendant_role) : ''}\n`;
             if (form.date) caseMsg += `📆 <b>أقرب جلسة:</b> ${escapeTelegramHtml(form.date)}\n`;
             sendTelegram(caseMsg);
             fetchCases(0, casesFilter);
@@ -269,7 +275,9 @@ export function useCaseActions(params: {
                 status: form.status || undefined,
                 client_id: (form.client_id !== undefined ? form.client_id : cases.find((c) => c.id === caseId)?.client_id) || null,
                 plaintiff: form.plaintiff || null,
+                plaintiff_role: form.plaintiff_role || null,
                 defendant: form.defendant || null,
+                defendant_role: form.defendant_role || null,
                 court_level: form.court_level || null,
                 circuit_number: form.circuit_number || null,
                 next_hearing: form.date || null,
@@ -349,8 +357,8 @@ export function useCaseActions(params: {
                 updMsg += `📋 <b>رقم القيد:</b> ${escapeTelegramHtml(form.number || '—')}\n`;
                 updMsg += `📌 <b>الموضوع:</b> ${escapeTelegramHtml(form.title)}\n`;
                 updMsg += `🏛 <b>المحكمة:</b> ${escapeTelegramHtml(form.court || '—')}\n`;
-                if (form.plaintiff) updMsg += `🟢 <b>المدعي:</b> ${escapeTelegramHtml(form.plaintiff)}\n`;
-                if (form.defendant) updMsg += `🔴 <b>المدعى عليه:</b> ${escapeTelegramHtml(form.defendant)}\n`;
+                if (form.plaintiff) updMsg += `🟢 <b>المدعي:</b> ${escapeTelegramHtml(form.plaintiff)}${form.plaintiff_role ? ' — ' + escapeTelegramHtml(form.plaintiff_role) : ''}\n`;
+                if (form.defendant) updMsg += `🔴 <b>المدعى عليه:</b> ${escapeTelegramHtml(form.defendant)}${form.defendant_role ? ' — ' + escapeTelegramHtml(form.defendant_role) : ''}\n`;
                 if (form.date) updMsg += `📆 <b>الجلسة القادمة:</b> ${escapeTelegramHtml(form.date)}\n`;
                 sendTelegram(updMsg);
                 fetchCases(0, casesFilter);
