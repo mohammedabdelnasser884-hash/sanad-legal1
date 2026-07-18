@@ -328,6 +328,28 @@ export function useFeesActions(cases: MappedCase[], clients: ClientRow[], countr
         fetchStatusCounts();
     };
 
+    // ─ حذف سجل أتعاب نهائيًا من قاعدة البيانات (مرحلة 2 — مكتمل، مفيش كود إضافي مطلوب) ─
+    // ⚠️ القرار المحسوم فى الخطة (18 يوليو 2026): حذف أتعاب نهائيًا يحذف سجل
+    // الأتعاب فقط، وميحذفش قضية ولا موكل. الـ FK الحقيقية بتغطي الباقي تلقائيًا:
+    //   - fee_payments.fee_id → CASCADE (الدفعات جزء من سجل الأتعاب نفسه، منطقي تتحذف معاه)
+    //   - invoices.fee_payment_id/case_id/client_id → SET NULL (الفواتير تفضل موجودة بسجلها كامل)
+    // يعني الدالة دي مش محتاجة أي كاسكيد يدوي.
+    const handlePermanentDeleteFee = async (id: string) => {
+        const targetFee = fees.find((f) => f.id === id);
+        const { error } = await db.from('case_fees').delete().eq('id', id);
+        if (error) { toast('❌ فشل حذف الأتعاب نهائياً — تحقق من الاتصال وأعد المحاولة', true); return; }
+        toast('🗑️ تم حذف الأتعاب نهائياً');
+        logActivity(db, 'حذف أتعاب نهائياً', {
+            entity_type: 'fee', entity_id: id,
+            client_name: targetFee?.client_name || null,
+            case_name: cases.find((c) => c.id === targetFee?.case_id)?.title || null,
+            case_type: cases.find((c) => c.id === targetFee?.case_id)?.type || null,
+        });
+        fetchFees(0, feesFilter, feesSearch, false);
+        fetchGrandSummary();
+        fetchStatusCounts();
+    };
+
     // ─ أرشفة سجل أتعاب (بدل حذف نهائي — البند 8 من قائمة الإجراءات) ─
     const handleDelete = async (id: string) => {
         const targetFee = fees.find((f) => f.id === id);
@@ -424,7 +446,7 @@ export function useFeesActions(cases: MappedCase[], clients: ClientRow[], countr
     feesPage, feesTotal, feesMore,
     fetchFees, handleFilterChange, handleSearch,
 
-    handleSave, handleAddPayment, handleDeletePayment, handleDelete, handleRestoreFee,
+    handleSave, handleAddPayment, handleDeletePayment, handleDelete, handlePermanentDeleteFee, handleRestoreFee,
 
     getFeeCategory,
     feesSections,
