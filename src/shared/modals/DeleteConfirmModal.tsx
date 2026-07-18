@@ -5,19 +5,81 @@ interface DeleteConfirmModalProps {
     title?: string;
     itemName: string;
     itemType: string;
-    onConfirm: () => void;
+    /** لما mode متبعتش، المودال بيعرض شاشة اختيار (أرشفة/حذف نهائي) أول، وبعد الاختيار بينده onConfirmArchive أو onConfirmDelete المناسبة. */
+    onConfirm?: () => void;
+    onConfirmArchive?: () => void;
+    onConfirmDelete?: () => void;
     onCancel: () => void;
     loading?: boolean;
+    /** لو اتبعتت، المودال بيتخطى شاشة الاختيار ويشتغل بالسلوك القديم (onConfirm). */
     mode?: 'delete' | 'archive';
+    /** نقاط تحذير مخصصة لحالة الحذف النهائي بس (تحل محل الثلاث نقاط العامة الافتراضية) —
+     *  مفيدة لتوضيح إيه اللي هيتحذف فعليًا وإيه اللي هيفضل موجود بربط مصفّر (زي الأتعاب/الفواتير). */
+    deleteConsequences?: string[];
     inputTestId?: string;
     confirmTestId?: string;
     cancelTestId?: string;
+    choiceTestId?: string;
 }
 
-function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onCancel, loading, mode = 'delete', inputTestId, confirmTestId, cancelTestId }: DeleteConfirmModalProps) {
+function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onConfirmArchive, onConfirmDelete, onCancel, loading, mode, deleteConsequences, inputTestId, confirmTestId, cancelTestId, choiceTestId }: DeleteConfirmModalProps) {
     const [typed, setTyped] = useState('');
+    const [chosenMode, setChosenMode] = useState<'delete' | 'archive' | null>(null);
     const isMatch = typed.trim() === (itemName||'').trim();
-    const isArchive = mode === 'archive';
+
+    const forcedMode = mode; // لو موجودة، ميتعرضش شاشة اختيار خالص (توافق كامل مع الاستخدام الحالي)
+    const effectiveMode = forcedMode ?? chosenMode;
+
+    // شاشة الاختيار: تظهر بس لما محدش حدد mode ثابت ولسه المستخدم ما اختارش
+    if (!forcedMode && !effectiveMode) {
+        return React.createElement('div',{
+            className:"fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5",
+            onClick: (e: React.MouseEvent<HTMLDivElement>) => { if(e.target===e.currentTarget) onCancel(); }
+        },
+            React.createElement('div',{className:"w-full max-w-sm bg-premium-card border border-white/10 rounded-3xl p-6 slide-up shadow-2xl space-y-5"},
+                React.createElement('div',null,
+                    React.createElement('h3',{className:"text-sm font-black text-white"},title||`حذف ${itemType}`),
+                    React.createElement('p',{className:"text-[10px] text-slate-400 font-bold mt-1"},itemName)
+                ),
+                React.createElement('div',{className:"space-y-2.5"},
+                    React.createElement('button',{
+                        onClick: () => setChosenMode('archive'),
+                        ...(choiceTestId ? {'data-testid': `${choiceTestId}-archive`} : {}),
+                        className:"w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 text-right active:scale-[0.98] transition-all"
+                    },
+                        React.createElement('span',{className:"text-2xl"},'📦'),
+                        React.createElement('span',{className:"flex-1"},
+                            React.createElement('span',{className:"block text-xs font-black text-white"},"أرشفة"),
+                            React.createElement('span',{className:"block text-[10px] text-slate-400 font-bold mt-0.5"},"يختفي من القوائم ويمكن استرجاعه لاحقًا")
+                        )
+                    ),
+                    React.createElement('button',{
+                        onClick: () => setChosenMode('delete'),
+                        ...(choiceTestId ? {'data-testid': `${choiceTestId}-delete`} : {}),
+                        className:"w-full flex items-center gap-3 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-right active:scale-[0.98] transition-all"
+                    },
+                        React.createElement('span',{className:"text-2xl"},'🗑️'),
+                        React.createElement('span',{className:"flex-1"},
+                            React.createElement('span',{className:"block text-xs font-black text-rose-300"},"حذف نهائي"),
+                            React.createElement('span',{className:"block text-[10px] text-slate-400 font-bold mt-0.5"},"⚠️ لا يمكن التراجع عنه")
+                        )
+                    )
+                ),
+                React.createElement('button',{
+                    onClick:onCancel,
+                    className:"w-full py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-black active:scale-95 transition-all"
+                },"إلغاء")
+            )
+        );
+    }
+
+    const isArchive = effectiveMode === 'archive';
+    const handleConfirmClick = () => {
+        if (!isMatch) return;
+        if (forcedMode) { onConfirm && onConfirm(); return; }
+        if (chosenMode === 'archive') { onConfirmArchive && onConfirmArchive(); return; }
+        if (chosenMode === 'delete') { onConfirmDelete && onConfirmDelete(); return; }
+    };
 
     return React.createElement('div',{
         className:"fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5",
@@ -41,9 +103,13 @@ function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onCancel, lo
                         React.createElement('p',null,"• السجلات المالية/المرتبطة (زي الفواتير الصادرة) تفضل كما هي")
                       )
                     : React.createElement(React.Fragment,null,
-                        React.createElement('p',null,"• سيُحذف "+itemType+" نهائياً من قاعدة البيانات"),
-                        React.createElement('p',null,"• لا يمكن استعادة البيانات بعد الحذف"),
-                        React.createElement('p',null,"• ستُحذف جميع الملفات والمستندات المرتبطة")
+                        ...(deleteConsequences && deleteConsequences.length > 0
+                            ? deleteConsequences.map((line, i) => React.createElement('p',{key:i},"• "+line))
+                            : [
+                                React.createElement('p',{key:'d1'},"• سيُحذف "+itemType+" نهائياً من قاعدة البيانات"),
+                                React.createElement('p',{key:'d2'},"• لا يمكن استعادة البيانات بعد الحذف"),
+                                React.createElement('p',{key:'d3'},"• ستُحذف جميع الملفات والمستندات المرتبطة"),
+                              ])
                       )
             ),
             // حقل التأكيد
@@ -69,6 +135,11 @@ function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onCancel, lo
                     ...(inputTestId ? {'data-testid': inputTestId} : {})
                 })
             ),
+            // رجوع لشاشة الاختيار (بس لو جينا منها، مش لما mode مثبتة من بره)
+            !forcedMode && React.createElement('button',{
+                onClick: () => { setChosenMode(null); setTyped(''); },
+                className:"text-[10px] text-slate-500 font-bold underline underline-offset-2 -mt-2"
+            },"← رجوع للاختيار"),
             // أزرار
             React.createElement('div',{className:"flex gap-3"},
                 React.createElement('button',{
@@ -77,7 +148,7 @@ function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onCancel, lo
                     ...(cancelTestId ? {'data-testid': cancelTestId} : {})
                 },"إلغاء"),
                 React.createElement('button',{
-                    onClick:()=>isMatch&&onConfirm(),
+                    onClick:handleConfirmClick,
                     disabled:!isMatch||loading,
                     ...(confirmTestId ? {'data-testid': confirmTestId} : {}),
                     className:"flex-1 py-3 rounded-xl text-white text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-35",
