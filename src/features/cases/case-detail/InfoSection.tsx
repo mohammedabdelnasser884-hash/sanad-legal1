@@ -44,17 +44,26 @@ function InfoSection({ caseData, client, sessions, notes, docs }: InfoSectionPro
                 // أسماء الخصوم
                 (caseData.plaintiff || caseData.defendant) && React.createElement('div', {className: "bg-premium-card border border-white/5 rounded-2xl p-4"},
                     React.createElement('p', {className: "text-[9px] font-black text-slate-500 mb-3 tracking-widest"}, "— أطراف الدعوى —"),
-                    React.createElement('div', {className: "space-y-3"},
-                        caseData.plaintiff && React.createElement('div', {className: "flex items-center justify-between"},
-                            React.createElement('span', {className: "text-[10px] text-slate-400 font-bold"}, "المدعي / الطاعن"),
-                            React.createElement('span', {className: "text-[11px] font-black text-emerald-400"}, caseData.plaintiff)
-                        ),
-                        caseData.plaintiff && caseData.defendant && React.createElement('div', {className: "border-t border-white/5"}),
-                        caseData.defendant && React.createElement('div', {className: "flex items-center justify-between"},
-                            React.createElement('span', {className: "text-[10px] text-slate-400 font-bold"}, "المدعى عليه / المطعون ضده"),
-                            React.createElement('span', {className: "text-[11px] font-black text-rose-400"}, caseData.defendant)
-                        )
-                    )
+                    (() => {
+                        const splitParty = (val: string | null | undefined) => {
+                            if(!val) return null;
+                            const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+                            return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+                        };
+                        const p = splitParty(caseData.plaintiff);
+                        const d = splitParty(caseData.defendant);
+                        return React.createElement('div', {className: "space-y-3"},
+                            p && React.createElement('div', {className: "flex items-center justify-between"},
+                                React.createElement('span', {className: "text-[10px] text-slate-400 font-bold"}, p.capacity || "المدعي / الطاعن"),
+                                React.createElement('span', {className: "text-[11px] font-black text-emerald-400"}, p.name)
+                            ),
+                            p && d && React.createElement('div', {className: "border-t border-white/5"}),
+                            d && React.createElement('div', {className: "flex items-center justify-between"},
+                                React.createElement('span', {className: "text-[10px] text-slate-400 font-bold"}, d.capacity || "المدعى عليه / المطعون ضده"),
+                                React.createElement('span', {className: "text-[11px] font-black text-rose-400"}, d.name)
+                            )
+                        );
+                    })()
                 ),
 
                 // بيانات الموكل
