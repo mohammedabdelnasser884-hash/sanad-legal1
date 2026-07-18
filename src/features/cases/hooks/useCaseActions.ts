@@ -44,8 +44,16 @@ export interface DeleteConfirmState {
     name: string;
     itemType: string;
     title: string;
-    mode: 'archive' | 'delete';
-    onConfirm: () => void | Promise<void>;
+    // mode/onConfirm: تفضل شغالة لأي استخدام قديم بيثبّت وضع واحد (زي الموكلين حاليًا).
+    // لما mode متبعتش، المودال بيعرض شاشة اختيار (أرشفة/حذف نهائي) وينده
+    // onConfirmArchive أو onConfirmDelete حسب اختيار المستخدم (شوف handleDeleteCase تحت).
+    mode?: 'archive' | 'delete';
+    onConfirm?: () => void | Promise<void>;
+    onConfirmArchive?: () => void | Promise<void>;
+    onConfirmDelete?: () => void | Promise<void>;
+    // نقاط تحذير مخصصة لحالة الحذف النهائي (شوف نفس الحقل فى DeleteConfirmModalProps) —
+    // بتوضح للمستخدم بالظبط إيه اللي هيتحذف فعليًا وإيه اللي هيفضل موجود بربط مصفّر.
+    deleteConsequences?: string[];
 }
 
 export function useCaseActions(params: {
@@ -214,16 +222,61 @@ export function useCaseActions(params: {
         setShowCaseModal(false);
     };
 
-    // ─ أرشفة قضية (بدل حذف نهائي — البند 8 من قائمة الإجراءات) ─
+    // ─ حذف قضية نهائيًا من قاعدة البيانات (مرحلة 2 — كاسكيد كامل) ─
+    // ⚠️ النطاق مبني على القرار المحسوم فى الخطة (18 يوليو 2026) بعد تحقق فعلي
+    // من delete_rule الحقيقي لكل الـ FKs فى الداتابيز الحية:
+    //   - case_sessions / case_events → CASCADE تلقائي مع حذف صف القضية (مفيش كود مطلوب)
+    //   - case_documents (سجل DB) → CASCADE تلقائي كمان، لكن الملفات الفعلية فى
+    //     Storage (bucket 'case-docs') لازم تتحذف يدويًا هنا الأول، لأن بعد حذف
+    //     صف القضية هنفقد storage_path بتاعتها (الصفوف هتتحذف تلقائيًا من الداتابيز).
+    //   - case_fees / fee_payments / invoices → SET NULL تلقائي، مايتحذفوش خالص
+    //     (القرار الصريح: حذف قضية ميحذفش الأتعاب المرتبطة بيها) — مفيش كود مطلوب هنا.
+    const handlePermanentDeleteCase = async (caseId: string) => {
+        const c = cases.find((x) => x.id === caseId);
+
+        // ─ خطوة 1: تنضيف ملفات Storage الخاصة بمستندات القضية (قبل ما صفوفها تتحذف تلقائيًا) ─
+        const { data: docs, error: docsFetchError } = await db.from('case_documents')
+            .select('storage_path').eq('case_id', caseId);
+        if (docsFetchError) {
+            toast('❌ فشل التحقق من مستندات القضية — تحقق من الاتصال وأعد المحاولة', true);
+            return;
+        }
+        const paths = (docs || []).map((d) => d.storage_path).filter((p): p is string => !!p);
+        if (paths.length > 0) {
+            const { error: storageErr } = await db.storage.from('case-docs').remove(paths);
+            // ⚠️ فشل حذف الملفات مش سبب لإيقاف حذف القضية نفسها — صفوف الـ DB هتتحذف
+            // تلقائيًا بالـ CASCADE بغض النظر، فمنع الحذف هنا هيسيب القضية عالقة من
+            // غير أي فايدة حقيقية. بنكمل الحذف ونحذّر المستخدم إنه يراجع bucket
+            // 'case-docs' يدويًا لو فيه ملفات يتيمة فضلت.
+            if (storageErr) toast('⚠️ تعذّر حذف بعض ملفات المستندات من التخزين — راجع bucket المستندات يدويًا', true);
+        }
+
+        // ─ خطوة 2: حذف صف القضية — الداتابيز بتكمل الباقي تلقائيًا (CASCADE/SET NULL) ─
+        const { error } = await db.from('cases').delete().eq('id', caseId);
+        nav.closeModal('delete');
+        setDeleteConfirm(null);
+        if (error) { toast('❌ فشل حذف القضية نهائياً — تحقق من الاتصال وأعد المحاولة', true); return; }
+        toast('🗑️ تم حذف القضية نهائياً');
+        logActivity(db, 'حذف قضية نهائياً', {
+            userName: _userName,
+            entity_type: 'case', entity_id: caseId, details: c?.title || null,
+            case_name: c?.title || null,
+            case_type: c?.type || null,
+            client_name: clients.find((cl) => cl.id === c?.client_id)?.full_name || null,
+        });
+        setSelectedCase(null);
+        setCases((prev) => prev.filter((cs) => cs.id !== caseId));
+    };
+
+    // ─ حذف قضية: يعرض اختيار (أرشفة/حذف نهائي) عن طريق DeleteConfirmModal ─
     const handleDeleteCase = async (caseId: string) => {
         const c = cases.find((x) => x.id === caseId);
         setDeleteConfirm({
             type: 'case', id: caseId,
             name: c?.title || 'القضية',
             itemType: 'القضية',
-            title: 'أرشفة القضية',
-            mode: 'archive',
-            onConfirm: async () => {
+            title: 'حذف القضية',
+            onConfirmArchive: async () => {
                 const { error } = await db.from('cases').update({ deleted_at: new Date().toISOString() }).eq('id', caseId);
                 nav.closeModal('delete');
                 setDeleteConfirm(null);
@@ -247,7 +300,13 @@ export function useCaseActions(params: {
                 });
                 setSelectedCase(null);
                 setCases((prev) => prev.filter((cs) => cs.id !== caseId));
-            }
+            },
+            onConfirmDelete: () => handlePermanentDeleteCase(caseId),
+            deleteConsequences: [
+                'سيُحذف نهائيًا: بيانات القضية، الجلسات، المستندات المرفوعة (والملفات الفعلية)، وأي عناصر أخرى تابعة للقضية فقط.',
+                'الأتعاب والفواتير المرتبطة بالقضية تفضل محفوظة بالكامل — بس رابطها بالقضية بيتصفّر.',
+                'لا يمكن التراجع عن هذا الإجراء.',
+            ],
         });
     };
 
@@ -368,5 +427,5 @@ export function useCaseActions(params: {
         }
     };
 
-    return { handleLogout, handleSaveCase, handleDeleteCase, handleRestoreCase, handleUpdateCase };
+    return { handleLogout, handleSaveCase, handleDeleteCase, handlePermanentDeleteCase, handleRestoreCase, handleUpdateCase };
 }
