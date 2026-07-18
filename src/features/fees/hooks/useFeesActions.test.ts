@@ -96,7 +96,7 @@ import { useFeesActions } from './useFeesActions';
 const cases: MappedCase[] = [{
   id: 'case-1', number: '1', title: 'قضية عمالية', court: '', type: 'عمالي',
   court_level: null, circuit_number: null, status: 'مفتوحة', date: '', client_id: 'client-1',
-  plaintiff: null, defendant: null, year: 2026, updated_at: null, court_floor: null,
+  plaintiff: null, plaintiff_role: null, defendant: null, defendant_role: null, year: 2026, updated_at: null, court_floor: null,
   court_hall: null, session_hall: null, secretary_hall: null, secretary_name: null, session_time: null,
 }];
 const clients: ClientRow[] = [{ id: 'client-1', full_name: 'أحمد محمد' } as ClientRow];
