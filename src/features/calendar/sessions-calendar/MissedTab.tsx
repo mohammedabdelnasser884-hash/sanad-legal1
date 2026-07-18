@@ -19,9 +19,11 @@ interface MissedTabProps {
     onOpenCase: (c: MappedCase) => void;
     onOpenReminders: () => void;
     onOpenStandalone: (s: CalendarSessionRow) => void;
+    // ⚡ [جديد] نفس فكرة refreshKey في CalendarTab.tsx/MonthListTab.tsx.
+    refreshKey?: number;
 }
 
-function MissedTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStandalone }: MissedTabProps) {
+function MissedTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStandalone, refreshKey }: MissedTabProps) {
     const today    = new Date();
     const todayStr = toDateStr(today);
     const [sessions, setSessions] = useState<CalendarSessionRow[]>([]);
@@ -47,7 +49,7 @@ function MissedTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStandalo
             setSessions(sess); setMissedTasks(tsk); setLoading(false);
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [refreshKey]);
 
     const fmtDate = (dateStr: string) => {
         const d = new Date(dateStr + 'T00:00:00');
