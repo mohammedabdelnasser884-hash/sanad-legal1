@@ -119,10 +119,11 @@ function AppModals({
         showAI && createPortal(React.createElement(AILegalAssistant, { onClose: () => setShowAI(false), cases, clients, profile, country }), document.body),
         deleteConfirm && nav.isOpen('delete') && createPortal(React.createElement(DeleteConfirmModal, {
             title: deleteConfirm.title, itemName: deleteConfirm.name, itemType: deleteConfirm.itemType,
-            // ⚠️ mode ميتبعتش افتراض ثابت هنا دلوقتي: لو deleteConfirm.mode مش
-            // متحدد (زي القضايا بعد باتش 1.1)، المودال بيعرض شاشة اختيار
-            // (أرشفة/حذف نهائي) لوحده. لو متحدد (زي الموكلين/الأتعاب لسه)،
-            // بيفضل نفس السلوك القديم بالظبط.
+            // ⚠️ mode ميتبعتش افتراض ثابت هنا: لو deleteConfirm.mode مش متحدد
+            // (القضايا والموكلين الاتنين دلوقتي بعد باتش 1.1/1.2)، المودال
+            // بيعرض شاشة اختيار (أرشفة/حذف نهائي) لوحده. الاستخدام الوحيد
+            // اللي لسه بيثبّت mode صراحة هو حذف دفعة أتعاب فردية فى
+            // FeesTab.tsx (مفيش معنى لأرشفة دفعة لوحدها — حذف نهائي بس).
             mode: deleteConfirm.mode,
             onConfirm: deleteConfirm.onConfirm,
             onConfirmArchive: deleteConfirm.onConfirmArchive,
