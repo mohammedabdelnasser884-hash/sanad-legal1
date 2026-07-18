@@ -344,13 +344,26 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
 
                 // أسماء الخصوم
                 (()=>{
+                    // ⚡ FIX: كان بيتم استخراج الصفة بـ regex من نص plaintiff/defendant
+                    // (نمط "الاسم (الصفة)")، رغم إن عمود plaintiff_role/defendant_role
+                    // موجود ومتعبي فعليًا في جدول cases. دلوقتي بنعرض من العمود المخصص
+                    // مباشرة — الـ fallback على الـ regex بس لصفوف قديمة لسه معندهاش
+                    // plaintiff_role (قبل تشغيل migration الـ backfill).
+                    // ⚠️ وبيتقسم بس لو اللي جوه القوسين كلمة صفة قانونية معروفة، عشان
+                    // مايتقطعش جزء من اسم شركة زي "(ش.م.م)".
+                    const knownCapacityPattern = /مدعي|مدعى عليه|مستأنف|طاعن|مطعون ضده|متهم|مجني عليه|محكوم عليه|خصم|مدين|دائن|موكل|وكيل|طالب|مطلوب ضده|منفذ ضده/;
                     const splitParty = (val: string | null) => {
                         if(!val) return {name:'—', capacity:''};
                         const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-                        return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+                        if(m && knownCapacityPattern.test(m[2])) return {name:m[1].trim(), capacity:m[2].trim()};
+                        return {name:val, capacity:''};
                     };
-                    const p = splitParty(caseData.plaintiff);
-                    const d = splitParty(caseData.defendant);
+                    const p = caseData.plaintiff_role
+                        ? {name: caseData.plaintiff || '—', capacity: caseData.plaintiff_role}
+                        : splitParty(caseData.plaintiff);
+                    const d = caseData.defendant_role
+                        ? {name: caseData.defendant || '—', capacity: caseData.defendant_role}
+                        : splitParty(caseData.defendant);
                     return (caseData.plaintiff || caseData.defendant) && React.createElement('div',{className:"flex items-center gap-2 mb-3 flex-wrap"},
                         React.createElement('div',{className:"flex flex-col"},
                             React.createElement('span',{className:"text-[11px] font-black text-emerald-400 leading-tight"},p.name),
