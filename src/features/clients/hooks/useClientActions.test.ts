@@ -21,6 +21,7 @@ type Result = { data?: unknown; error?: unknown };
 function makeMockDb() {
   const configured: Record<string, Result> = {};
   const updateSpy = vi.fn();
+  const deleteSpy = vi.fn();
   const uploadSpy = vi.fn();
 
   const setResult = (key: string, result: Result) => { configured[key] = result; };
@@ -31,6 +32,10 @@ function makeMockDb() {
       updateSpy(table, payload);
       return { eq: vi.fn(() => Promise.resolve(get(`${table}:update`, { error: null }))) };
     }),
+    delete: vi.fn(() => {
+      deleteSpy(table);
+      return { eq: vi.fn(() => Promise.resolve(get(`${table}:delete`, { error: null }))) };
+    }),
   }));
 
   const storageFrom = vi.fn((bucket: string) => ({
@@ -40,7 +45,7 @@ function makeMockDb() {
     }),
   }));
 
-  return { from, storageFrom, setResult, updateSpy, uploadSpy };
+  return { from, storageFrom, setResult, updateSpy, deleteSpy, uploadSpy };
 }
 
 let mockDb = makeMockDb();
@@ -290,43 +295,105 @@ describe('useClientActions', () => {
     });
   });
 
-  describe('handleDeleteClient — أرشفة (soft delete)', () => {
-    it('بينشئ deleteConfirm بوضع archive، وعند onConfirm بيحدّث deleted_at، يقفل المودال، ويسجّل النشاط، ويصفّي الموكل من الـ state', async () => {
-      mockDb.setResult('clients:update', { error: null });
+  describe('handleDeleteClient — يعرض اختيار (بدون mode ثابتة)', () => {
+    it('بينشئ deleteConfirm من غير mode ثابتة (عشان المودال يعرض شاشة اختيار أرشفة/حذف نهائي)، مع onConfirmArchive وonConfirmDelete جاهزين', async () => {
       const params = makeParams();
       const { handleDeleteClient } = useClientActions(params);
 
       await handleDeleteClient('client-1');
 
       expect(params.setDeleteConfirm).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'client', id: 'client-1', mode: 'archive', name: 'أحمد محمد',
+        type: 'client', id: 'client-1', name: 'أحمد محمد',
       }));
       const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      await deleteConfirmArg.onConfirm();
-
-      expect(mockDb.updateSpy).toHaveBeenCalledWith('clients', expect.objectContaining({ deleted_at: expect.any(String) }));
-      expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
-      expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
-      expect(toast).toHaveBeenCalledWith('📦 تم نقل الموكل للأرشيف');
-      expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'أرشفة موكل', expect.objectContaining({
-        entity_type: 'client', entity_id: 'client-1', client_name: 'أحمد محمد',
-      }));
-      expect(params.setSelectedClient).toHaveBeenCalledWith(null);
-      expect(params.setClients).toHaveBeenCalled();
+      expect(deleteConfirmArg.mode).toBeUndefined();
+      expect(typeof deleteConfirmArg.onConfirmArchive).toBe('function');
+      expect(typeof deleteConfirmArg.onConfirmDelete).toBe('function');
     });
 
-    it('فشل الأرشفة → توست فشل، من غير logActivity أو تصفية الـ state', async () => {
-      mockDb.setResult('clients:update', { error: { message: 'archive failed' } });
+    describe('اختيار "أرشفة" (onConfirmArchive)', () => {
+      it('بيحدّث deleted_at، يقفل المودال، ويسجّل النشاط، ويصفّي الموكل من الـ state', async () => {
+        mockDb.setResult('clients:update', { error: null });
+        const params = makeParams();
+        const { handleDeleteClient } = useClientActions(params);
+
+        await handleDeleteClient('client-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmArchive();
+
+        expect(mockDb.updateSpy).toHaveBeenCalledWith('clients', expect.objectContaining({ deleted_at: expect.any(String) }));
+        expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
+        expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
+        expect(toast).toHaveBeenCalledWith('📦 تم نقل الموكل للأرشيف');
+        expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'أرشفة موكل', expect.objectContaining({
+          entity_type: 'client', entity_id: 'client-1', client_name: 'أحمد محمد',
+        }));
+        expect(params.setSelectedClient).toHaveBeenCalledWith(null);
+        expect(params.setClients).toHaveBeenCalled();
+      });
+
+      it('فشل الأرشفة → توست فشل، من غير logActivity أو تصفية الـ state', async () => {
+        mockDb.setResult('clients:update', { error: { message: 'archive failed' } });
+        const params = makeParams();
+        const { handleDeleteClient } = useClientActions(params);
+
+        await handleDeleteClient('client-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmArchive();
+
+        expect(toast).toHaveBeenCalledWith('❌ فشل أرشفة الموكل — تحقق من الاتصال وأعد المحاولة', true);
+        expect(logActivity).not.toHaveBeenCalled();
+        expect(params.setSelectedClient).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('اختيار "حذف نهائي" (onConfirmDelete → handlePermanentDeleteClient)', () => {
+      it('بيحذف صف الموكل فعليًا، يقفل المودال، ويسجّل النشاط', async () => {
+        mockDb.setResult('clients:delete', { error: null });
+        const params = makeParams();
+        const { handleDeleteClient } = useClientActions(params);
+
+        await handleDeleteClient('client-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmDelete();
+
+        expect(mockDb.deleteSpy).toHaveBeenCalledWith('clients');
+        expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
+        expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
+        expect(toast).toHaveBeenCalledWith('🗑️ تم حذف الموكل نهائياً');
+        expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'حذف موكل نهائياً', expect.objectContaining({
+          entity_type: 'client', entity_id: 'client-1', client_name: 'أحمد محمد',
+        }));
+        expect(params.setSelectedClient).toHaveBeenCalledWith(null);
+      });
+
+      it('فشل الحذف النهائي (خطأ عام من قاعدة البيانات) → توست فشل، من غير logActivity أو تحديث state', async () => {
+        mockDb.setResult('clients:delete', { error: { message: 'db error' } });
+        const params = makeParams();
+        const { handleDeleteClient } = useClientActions(params);
+
+        await handleDeleteClient('client-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmDelete();
+
+        expect(toast).toHaveBeenCalledWith('❌ فشل حذف الموكل نهائياً — تحقق من الاتصال وأعد المحاولة', true);
+        expect(logActivity).not.toHaveBeenCalled();
+        expect(params.setSelectedClient).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('handlePermanentDeleteClient (استدعاء مباشر — نفس الدالة اللي هتُستخدم من قسم الأرشيف لاحقًا)', () => {
+    it('نجاح → حذف الصف، توست نجاح، تسجيل نشاط، تحديث state المحلي', async () => {
+      mockDb.setResult('clients:delete', { error: null });
       const params = makeParams();
-      const { handleDeleteClient } = useClientActions(params);
+      const { handlePermanentDeleteClient } = useClientActions(params);
 
-      await handleDeleteClient('client-1');
-      const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      await deleteConfirmArg.onConfirm();
+      await handlePermanentDeleteClient('client-1');
 
-      expect(toast).toHaveBeenCalledWith('❌ فشل أرشفة الموكل — تحقق من الاتصال وأعد المحاولة', true);
-      expect(logActivity).not.toHaveBeenCalled();
-      expect(params.setSelectedClient).not.toHaveBeenCalled();
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('clients');
+      expect(toast).toHaveBeenCalledWith('🗑️ تم حذف الموكل نهائياً');
+      expect(params.setClients).toHaveBeenCalled();
     });
   });
 
