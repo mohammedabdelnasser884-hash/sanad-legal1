@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from '../../../shared/lib/notifications';
 import { safeUpdate } from '../../../shared/lib/dataAccess';
@@ -381,12 +381,39 @@ interface StandaloneSessionDetailModalProps {
     onClientAdded?: () => void;
 }
 
-function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify, onClientAdded }: StandaloneSessionDetailModalProps) {
+function StandaloneSessionDetailModal({ session: partialSession, db, onClose, onDone, onNotify, onClientAdded }: StandaloneSessionDetailModalProps) {
     const [showUpdate, setShowUpdate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [showLink, setShowLink] = useState(false);
     const [showConfirmDelete, setShowConfirmDelete] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    // ⚡ [حل جذري] الـ session الجاي كـ prop غالبًا مصدره استعلام select()
+    // مبني بأعمدة محدودة (CalendarTab.tsx / useDashboardFeed.ts، مبنيين
+    // كده عمدًا لتخفيف تحميل قوائم العرض) — فمش فيه plaintiff_national_id/
+    // plaintiff_power_of_attorney/defendant_national_id وغيرهم. من غير
+    // الفتش ده، أي إجراء هنا (تعديل/تحديث الجلسة/ربط) هيسجّل null في
+    // الحقول دي بدل القيمة الحقيقية ("البيانات بتطير"). فبمجرد ما
+    // المودال يفتح، بنجيب الصف كامل (select *) بالـ id مرة واحدة،
+    // ونستخدمه هو بس في كل حاجة تحت (عرض + تمرير لكل الموديلات
+    // الفرعية) — مش الـ prop الناقص. كده أي عمود جديد يتضاف مستقبلاً
+    // في case_sessions بيوصل تلقائي من غير ما نلمس أي select() تاني.
+    const [fullSession, setFullSession] = useState<CaseSessionRow>(partialSession);
+    const [loadingFull, setLoadingFull] = useState(true);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoadingFull(true);
+        db.from('case_sessions').select('*').eq('id', partialSession.id).single()
+            .then(({ data, error }) => {
+                if (cancelled) return;
+                if (!error && data) setFullSession(data as CaseSessionRow);
+                setLoadingFull(false);
+            });
+        return () => { cancelled = true; };
+    }, [partialSession.id, db]);
+
+    const session = fullSession;
     // الزرار "🔗 ربط" بيتاح بس لو الجلسة لسه مش مربوطة لا بقضية ولا بموكل
     const isAlreadyLinked = !!(session.case_id || session.client_id);
 
@@ -481,9 +508,10 @@ function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify, 
                 // زر تحديث الجلسة — كبير ذهبي
                 React.createElement('button', {
                     onClick: () => setShowUpdate(true),
-                    className: 'w-full py-3 rounded-2xl text-xs font-black text-premium-bg transition-all',
+                    disabled: loadingFull,
+                    className: 'w-full py-3 rounded-2xl text-xs font-black text-premium-bg transition-all disabled:opacity-50',
                     style: { background: 'linear-gradient(135deg,#d4af37,#f0c040)' }
-                }, '⚡ تحديث الجلسة'),
+                }, loadingFull ? '⏳ جاري تحميل بيانات الجلسة...' : '⚡ تحديث الجلسة'),
 
                 // صف الأزرار الصغيرة
                 React.createElement('div', { className: 'flex gap-2' },
@@ -493,11 +521,13 @@ function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify, 
                     }, 'إغلاق'),
                     !isAlreadyLinked && React.createElement('button', {
                         onClick: () => setShowLink(true),
-                        className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all'
+                        disabled: loadingFull,
+                        className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-50'
                     }, '🔗 ربط'),
                     React.createElement('button', {
                         onClick: () => setShowEdit(true),
-                        className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all'
+                        disabled: loadingFull,
+                        className: 'flex-1 py-2.5 rounded-2xl text-xs font-bold text-slate-300 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-50'
                     }, '✏️ تعديل'),
                     React.createElement('button', {
                         onClick: () => setShowConfirmDelete(true),
