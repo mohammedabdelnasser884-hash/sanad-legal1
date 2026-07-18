@@ -32,7 +32,9 @@ export interface MappedCase {
     date: string;
     client_id: string | null;
     plaintiff: string | null;
+    plaintiff_role: string | null;
     defendant: string | null;
+    defendant_role: string | null;
     year: number;
     updated_at: string | null;
     court_floor: string | null;
@@ -152,7 +154,9 @@ export function useAppData(profile: ProfileRow | null) {
             date:           sessionsMap[r.id] || r.next_hearing || '—',
             client_id:      r.client_id,
             plaintiff:      r.plaintiff || null,
+            plaintiff_role: r.plaintiff_role || null,
             defendant:      r.defendant || null,
+            defendant_role: r.defendant_role || null,
             year:           r.created_at ? new Date(r.created_at).getFullYear() : new Date().getFullYear(),
             updated_at:     r.updated_at || null,  // BUG-19: محتاجينه لـ knownUpdatedAt في handleUpdateCase
             court_floor:    r.court_floor || null,
@@ -230,7 +234,9 @@ export function useAppData(profile: ProfileRow | null) {
             date:           sessionsMap[r.id] || r.next_hearing || '—',
             client_id:      r.client_id,
             plaintiff:      r.plaintiff || null,
+            plaintiff_role: r.plaintiff_role || null,
             defendant:      r.defendant || null,
+            defendant_role: r.defendant_role || null,
             year:           r.created_at ? new Date(r.created_at).getFullYear() : new Date().getFullYear(),
             updated_at:     r.updated_at || null,
             court_floor:    r.court_floor || null,
