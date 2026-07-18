@@ -32,18 +32,10 @@ const caseSections: CaseSection[] = [
     {
         key:'منتهية', label:'منتهية', emoji:'✅',
         emptyMsg:'لا توجد قضايا منتهية بعد',
-        emptyNote:'القضايا التي صدر فيها حكم نهائي أو تم إنهاؤها ستُحفظ هنا',
+        emptyNote:'القضايا التي صدر فيها حكم نهائي أو تم إنهاؤها بأي شكل (تنازل، صلح، إغلاق) ستُحفظ هنا',
         activeBg:'bg-emerald-500/20 border-emerald-500/40', activeText:'text-emerald-300',
         inactiveBg:'bg-white/3 border-white/8', inactiveText:'text-slate-400',
         countActiveBg:'bg-emerald-500/30 text-emerald-200', countInactiveBg:'bg-white/5 text-slate-500',
-    },
-    {
-        key:'مغلقة', label:'مغلقة', emoji:'🔒',
-        emptyMsg:'لا توجد قضايا مغلقة',
-        emptyNote:'القضايا التي تم إغلاقها نهائياً (بدون صدور حكم) ستظهر هنا',
-        activeBg:'bg-slate-500/20 border-slate-500/40', activeText:'text-slate-300',
-        inactiveBg:'bg-white/3 border-white/8', inactiveText:'text-slate-400',
-        countActiveBg:'bg-slate-500/30 text-slate-200', countInactiveBg:'bg-white/5 text-slate-500',
     },
 ];
 
