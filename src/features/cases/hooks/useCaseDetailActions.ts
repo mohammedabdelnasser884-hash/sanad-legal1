@@ -131,8 +131,17 @@ export function useCaseDetailActions(
     const safeCaseType = escapeHtml(caseData.type || '—');
     const safeCaseCourt = escapeHtml(caseData.court || '—');
     const safeClientName = escapeHtml(client?.full_name || '—');
-    const safePlaintiff = escapeHtml(caseData.plaintiff || '');
-    const safeDefendant = escapeHtml(caseData.defendant || '');
+    const splitParty = (val: string | null | undefined) => {
+        if(!val) return null;
+        const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+        return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+    };
+    const plaintiffParty = splitParty(caseData.plaintiff);
+    const defendantParty = splitParty(caseData.defendant);
+    const safePlaintiffName = escapeHtml(plaintiffParty?.name || '');
+    const safePlaintiffLabel = escapeHtml(plaintiffParty?.capacity || 'المدعي / الطاعن');
+    const safeDefendantName = escapeHtml(defendantParty?.name || '');
+    const safeDefendantLabel = escapeHtml(defendantParty?.capacity || 'المدعى عليه / المطعون ضده');
 
     const win = window.open('', '_blank');
     if (!win) { setExportingPdf(false); return; }
@@ -152,6 +161,10 @@ ${PDF_FONT_LINK}
   .case-title{font-size:20px;font-weight:900;color:#fff;text-align:center;}
   .case-sub{font-size:11px;color:rgba(212,175,55,0.7);text-align:center;margin-top:6px;}
   .badge{display:inline-block;padding:4px 14px;border-radius:20px;border:1px solid #D4AF37;color:#D4AF37;font-size:11px;margin-top:8px;}
+  .header-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(212,175,55,0.2);}
+  .header-field{background:rgba(255,255,255,0.06);border:1px solid rgba(212,175,55,0.15);border-radius:8px;padding:10px 12px;}
+  .header-field label{font-size:9px;color:rgba(212,175,55,0.65);display:block;margin-bottom:3px;font-weight:700;}
+  .header-field span{font-size:12px;font-weight:700;color:#fff;}
   .gold-bar{height:3px;background:linear-gradient(90deg,#D4AF37,#E8C84A,#D4AF37);}
   .section{padding:20px 24px;border-bottom:1px solid #f0f0f0;}
   .section h2{font-size:13px;font-weight:900;color:#1a1a2e;margin-bottom:14px;padding-bottom:6px;border-bottom:2px solid #D4AF37;}
@@ -193,20 +206,16 @@ ${PDF_FONT_LINK}
       <div class="case-sub">ملف القضية الكامل</div>
       <div class="badge">${safeCaseStatus}</div>
     </div>
-  </div>
-  <div class="gold-bar"></div>
-
-  <div class="section">
-    <h2>📋 بيانات القضية</h2>
-    <div class="grid2">
-      <div class="field"><label>رقم القيد</label><span>${safeCaseNum}</span></div>
-      <div class="field"><label>نوع القضية</label><span>${safeCaseType}</span></div>
-      <div class="field"><label>المحكمة</label><span>${safeCaseCourt}</span></div>
-      <div class="field"><label>الموكل</label><span>${safeClientName}</span></div>
-      ${safePlaintiff ? `<div class="field"><label>المدعي / الطاعن</label><span>${safePlaintiff}</span></div>` : ''}
-      ${safeDefendant ? `<div class="field"><label>المدعى عليه / المطعون ضده</label><span>${safeDefendant}</span></div>` : ''}
+    <div class="header-fields">
+      <div class="header-field"><label>رقم القيد</label><span>${safeCaseNum}</span></div>
+      <div class="header-field"><label>نوع القضية</label><span>${safeCaseType}</span></div>
+      <div class="header-field"><label>المحكمة</label><span>${safeCaseCourt}</span></div>
+      <div class="header-field"><label>الموكل</label><span>${safeClientName}</span></div>
+      ${plaintiffParty ? `<div class="header-field"><label>${safePlaintiffLabel}</label><span>${safePlaintiffName}</span></div>` : ''}
+      ${defendantParty ? `<div class="header-field"><label>${safeDefendantLabel}</label><span>${safeDefendantName}</span></div>` : ''}
     </div>
   </div>
+  <div class="gold-bar"></div>
 
   ${sessions.length > 0 ? `
   <div class="section">
