@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>بوابة الموكل | سَنَد</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#070d1a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+body{font-family:'Cairo',sans-serif;background:#070d1a;color:#e8eaf0;min-height:100vh;}
+:root{
+  --gold:#D4AF37;--gold-l:#E8C84A;--gold-dim:rgba(212,175,55,0.12);--gold-b:rgba(212,175,55,0.25);
+  --bg:#070d1a;--bg2:#0B1320;--card:#0d1a2e;--card2:#112040;
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+  --t1:#e8eaf0;--t2:#8a9bb5;--t3:#4a5a72;
+}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--gold-b);border-radius:4px;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(212,175,55,0)}50%{box-shadow:0 0 24px 6px rgba(212,175,55,0.22)}}
+.fu{animation:fadeUp .38s cubic-bezier(.22,1,.36,1) forwards;}
+.fi{animation:fadeIn .3s ease forwards;}
+.s1{animation-delay:.05s;opacity:0}.s2{animation-delay:.1s;opacity:0}.s3{animation-delay:.15s;opacity:0}.s4{animation-delay:.2s;opacity:0}
+.spin{animation:spin 1s linear infinite;}
+.glow{animation:glow 2.5s ease-in-out infinite;}
+.skeleton{background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);background-size:400px 100%;animation:shimmer 1.4s ease-in-out infinite;border-radius:10px;}
+input,textarea{font-family:'Cairo',sans-serif;outline:none;}
+input:focus,textarea:focus{border-color:var(--gold)!important;}
+input::placeholder,textarea::placeholder{color:var(--t3);}
+textarea{resize:none;}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--card2);border:1px solid var(--gold-b);color:var(--gold-l);padding:10px 20px;border-radius:14px;font-size:12px;font-weight:700;z-index:9999;transition:transform .3s cubic-bezier(.22,1,.36,1);white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5);pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;}
+.b-active{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);}
+.b-pending{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.25);}
+.b-closed{background:rgba(100,116,139,.15);color:#64748b;border:1px solid rgba(100,116,139,.2);}
+.b-won{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);}
+.b-lost{background:rgba(248,113,113,.12);color:#f87171;border:1px solid rgba(248,113,113,.25);}
+.card-h{transition:border-color .2s,transform .15s;cursor:pointer;}
+.card-h:active{transform:scale(.985);}
+.tab-a{color:var(--gold-l);border-bottom:2px solid var(--gold);background:var(--gold-dim);}
+.tab-i{color:var(--t2);border-bottom:2px solid transparent;}
+.pin-key{width:70px;height:70px;border-radius:50%;background:var(--card2);border:1px solid var(--b2);color:var(--t1);font-size:22px;font-weight:900;font-family:'Cairo',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;user-select:none;-webkit-user-select:none;}
+.pin-key:active{background:var(--gold-dim);border-color:var(--gold-b);transform:scale(.91);}
+.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--gold-b);transition:all .2s;}
+.pin-dot.filled{background:var(--gold);border-color:var(--gold);box-shadow:0 0 8px rgba(212,175,55,.5);}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 10% -10%,rgba(212,175,55,.06) 0%,transparent 60%),
+  radial-gradient(ellipse 50% 40% at 90% 110%,rgba(96,165,250,.04) 0%,transparent 55%);}
+#root{position:relative;z-index:1;}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="root"></div>
+<script type="module">
+import React,{useState,useEffect,useRef,useCallback} from 'https://esm.sh/react@18.2.0';
+import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
+
+// تنبيه: مفيش اتصال مباشر بـ Supabase من المتصفح هنا تاني.
+// كل حاجة بتعدّي على Edge Function اسمها client-portal-api، وهي
+// اللي بتتحقق من الـ PIN وتجيب البيانات على السيرفر، مش هنا.
+// ⚙️  لو غيّرت الـ Supabase project، غيّر SUPABASE_PROJECT_REF بس هنا
+const SUPABASE_PROJECT_REF = 'lrdshyohvymbdanoxgyy'; // ← غيّر هنا فقط
+const FN_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/client-portal-api`;
+
+async function callApi(action,payload={}){
+  const r=await fetch(FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...payload})});
+  const data=await r.json().catch(()=>({}));
+  if(r.status===401){clearSession();window.location.reload();throw new Error(data.error||'الجلسة منتهية');}
+  if(!r.ok)throw new Error(data.error||'حدث خطأ، حاول مرة أخرى');
+  return data;
+}
+
+// ── Toast ──
+function toast(msg,err=false){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.style.borderColor=err?'rgba(248,113,113,.4)':'rgba(212,175,55,.4)';
+  el.style.color=err?'#f87171':'#E8C84A';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ── Session (بتخزن توكن موقّع من السيرفر، مش الـ PIN ولا الـ ID مباشرة) ──
+const SK='sanad_portal_v3';
+function saveSession(token){localStorage.setItem(SK,JSON.stringify({token,ts:Date.now()}));}
+function loadSession(){try{const s=JSON.parse(localStorage.getItem(SK)||'null');if(!s||!s.token)return null;if(Date.now()-s.ts>7*24*3600*1000){localStorage.removeItem(SK);return null;}return s;}catch{return null;}}
+function clearSession(){localStorage.removeItem(SK);}
+
+// ── Helpers ──
+const fmtShort=d=>{if(!d)return'—';try{return new Date(d).toLocaleDateString('ar-EG',{year:'numeric',month:'short',day:'numeric'});}catch{return d;}};
+const fmtNum=n=>n?.toLocaleString('ar-SA',{maximumFractionDigits:0})||'0';
+const ST={'نشطة':{cls:'b-active',icon:'🟢'},'متوقفة':{cls:'b-pending',icon:'🟡'},'منتهية':{cls:'b-closed',icon:'⚫'},'فازت':{cls:'b-won',icon:'✅'},'خسرت':{cls:'b-lost',icon:'❌'}};
+const getName=c=>c?.client_name||c?.full_name||'الموكل';
+
+// ── SVG Icons ──
+const svg=(d,s=20)=>React.createElement('svg',{width:s,height:s,fill:"none",viewBox:"0 0 24 24",strokeWidth:"1.5",stroke:"currentColor"},React.createElement('path',{strokeLinecap:"round",strokeLinejoin:"round",d}));
+const Ic={
+  Scale:({s=20})=>svg("M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z",s),
+  Calendar:({s=20})=>svg("M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5",s),
+  Folder:({s=20})=>svg("M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v8.25",s),
+  Money:({s=20})=>svg("M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z",s),
+  Chat:({s=20})=>svg("M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z",s),
+  Send:({s=18})=>svg("M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5",s),
+  Download:({s=16})=>svg("M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3",s),
+  Logout:({s=18})=>svg("M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9",s),
+  Shield:({s=20})=>svg("M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z",s),
+  Spin:()=>React.createElement('svg',{className:"spin",width:20,height:20,fill:"none",viewBox:"0 0 24 24"},React.createElement('circle',{cx:12,cy:12,r:10,stroke:"currentColor",strokeWidth:4,opacity:.25}),React.createElement('path',{fill:"currentColor",opacity:.75,d:"M4 12a8 8 0 018-8v8z"})),
+};
+
+// ════════════════════════
+//  شاشة الدخول بـ PIN
+// ════════════════════════
+function LoginScreen({onLogin}){
+  const [phone,setPhone]=useState('');
+  const [step,setStep]=useState('phone');
+  const [pin,setPin]=useState('');
+  const [loading,setLoading]=useState(false);
+  const [err,setErr]=useState('');
+  const [found,setFound]=useState(null);
+
+  const findClient=async()=>{
+    if(!phone.trim()){setErr('أدخل رقم هاتفك');return;}
+    setLoading(true);setErr('');
+    try{
+      const res=await callApi('find',{contact:phone.trim()});
+      setFound({client_name:res.client_name});
+      setStep('pin');
+    }catch(e){
+      setErr(e.message||'لم يُعثر على حساب بهذا الرقم');
+    }
+    setLoading(false);
+  };
+
+  const checkPin=async()=>{
+    if(!found||!pin.trim())return;
+    try{
+      const res=await callApi('verify',{contact:phone.trim(),pin:pin.trim()});
+      saveSession(res.token);
+      onLogin(res.client,res.token);
+    } catch(e) {
+      setErr(e.message||'رمز الدخول غير صحيح ❌');
+      setPin('');
+      setTimeout(()=>setErr(''),2500);
+    }
+  };
+
+  const [showPin,setShowPin]=useState(false);
+
+  // ── شاشة رمز الدخول ──
+  if(step==='pin')return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}},
+    React.createElement('div',{className:"fu",style:{textAlign:'center',marginBottom:'28px'}},
+      React.createElement('div',{style:{width:'62px',height:'62px',borderRadius:'16px',background:'#0B1320',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px',boxShadow:'0 0 26px rgba(212,175,55,0.12)',border:'1px solid rgba(212,175,55,0.2)'}},
+        React.createElement('svg',{width:42,height:42,viewBox:'0 0 40 40'},
+            React.createElement('line',{x1:'6',y1:'13',x2:'34',y2:'13',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'9.5',y1:'21',x2:'34',y2:'21',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'13',y1:'29',x2:'34',y2:'29',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'6',y1:'13',x2:'6',y2:'32',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('circle',{cx:'6',cy:'13',r:'4.5',fill:'#D4AF37'})
+        )
+      ),
+      React.createElement('p',{style:{fontSize:'16px',fontWeight:900,color:'var(--t1)',marginBottom:'4px'}},'أهلاً، '+getName(found)),
+      React.createElement('p',{style:{fontSize:'11px',color:'var(--t2)'}},'أدخل رمز الدخول')
+    ),
+    // حقل رمز الدخول
+    React.createElement('div',{className:"fu s1",style:{width:'100%',maxWidth:'320px',background:'var(--card)',border:'1px solid var(--b2)',borderRadius:'20px',padding:'24px',boxShadow:'0 20px 60px rgba(0,0,0,.5)'}},
+      React.createElement('label',{style:{display:'block',fontSize:'11px',fontWeight:700,color:'var(--t2)',marginBottom:'8px'}},'رمز الدخول'),
+      React.createElement('div',{style:{position:'relative'}},
+        React.createElement('input',{
+          type:showPin?'text':'password',
+          value:pin,
+          onChange:e=>setPin(e.target.value),
+          onKeyDown:e=>e.key==='Enter'&&checkPin(),
+          placeholder:'أدخل الرمز...',
+          autoFocus:true,
+          style:{width:'100%',padding:'13px 44px 13px 14px',fontSize:'16px',background:'var(--bg2)',border:'1px solid var(--b2)',borderRadius:'12px',color:'var(--t1)',direction:'ltr',textAlign:'left',letterSpacing:'2px'}
+        }),
+        React.createElement('button',{
+          onClick:()=>setShowPin(!showPin),
+          style:{position:'absolute',left:'12px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--t3)',fontSize:'16px',padding:'4px'}
+        },showPin?'🙈':'👁')
+      ),
+      err&&React.createElement('p',{style:{fontSize:'11px',color:'#f87171',marginTop:'8px',textAlign:'center'}},err),
+      React.createElement('button',{
+        onClick:checkPin,disabled:!pin.trim(),
+        style:{width:'100%',padding:'13px',marginTop:'14px',borderRadius:'12px',border:'none',cursor:'pointer',background:'linear-gradient(135deg,#D4AF37,#E8C84A)',color:'#070d1a',fontSize:'14px',fontWeight:900,fontFamily:'Cairo,sans-serif',opacity:pin.trim()?1:.5,transition:'opacity .2s'}
+      },'دخول ←')
+    ),
+    React.createElement('button',{onClick:()=>{setStep('phone');setPin('');setErr('');setFound(null);setShowPin(false);},style:{marginTop:'18px',fontSize:'11px',color:'var(--t3)',background:'none',border:'none',cursor:'pointer',fontFamily:'Cairo,sans-serif'}},'← تغيير الرقم')
+  );
+
+  // ── شاشة رقم الهاتف ──
+  return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px'}},
+    React.createElement('div',{className:"fu",style:{textAlign:'center',marginBottom:'32px'}},
+      React.createElement('div',{style:{width:'70px',height:'70px',borderRadius:'18px',background:'#0B1320',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px',boxShadow:'0 0 30px rgba(212,175,55,0.12)',border:'1px solid rgba(212,175,55,0.2)'}},
+        React.createElement('svg',{width:48,height:48,viewBox:'0 0 40 40'},
+            React.createElement('line',{x1:'6',y1:'13',x2:'34',y2:'13',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'9.5',y1:'21',x2:'34',y2:'21',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'13',y1:'29',x2:'34',y2:'29',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('line',{x1:'6',y1:'13',x2:'6',y2:'32',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+            React.createElement('circle',{cx:'6',cy:'13',r:'4.5',fill:'#D4AF37'}),
+            React.createElement('circle',{cx:'6',cy:'33',r:'3',fill:'#D4AF37',opacity:'0.38'})
+        )
+      ),
+      React.createElement('h1',{style:{fontSize:'20px',fontWeight:900,color:'var(--t1)',marginBottom:'5px'}},'بوابة الموكل'),
+      React.createElement('p',{style:{fontSize:'11px',color:'var(--t2)',display:'flex',alignItems:'center',justifyContent:'center',gap:'5px'}},
+        React.createElement(Ic.Shield,{s:13}),'سَنَد'
+      )
+    ),
+    React.createElement('div',{className:"fu s1",style:{width:'100%',maxWidth:'340px',background:'var(--card)',border:'1px solid var(--b2)',borderRadius:'24px',padding:'28px',boxShadow:'0 20px 60px rgba(0,0,0,.5)'}},
+      React.createElement('h2',{style:{fontSize:'15px',fontWeight:900,color:'var(--t1)',marginBottom:'6px'}},'تسجيل الدخول'),
+      React.createElement('p',{style:{fontSize:'11px',color:'var(--t2)',marginBottom:'20px'}},'أدخل رقم هاتفك المسجّل في المكتب'),
+      React.createElement('label',{style:{display:'block',fontSize:'11px',fontWeight:700,color:'var(--t2)',marginBottom:'7px'}},'رقم الهاتف'),
+      React.createElement('input',{type:'tel',value:phone,onChange:e=>setPhone(e.target.value),onKeyDown:e=>e.key==='Enter'&&findClient(),placeholder:'01xxxxxxxxx',style:{width:'100%',padding:'12px 14px',fontSize:'14px',background:'var(--bg2)',border:'1px solid var(--b2)',borderRadius:'12px',color:'var(--t1)',direction:'ltr',textAlign:'left',marginBottom:'6px'}}),
+      err&&React.createElement('p',{style:{fontSize:'11px',color:'#f87171',marginBottom:'8px',textAlign:'center'}},err),
+      React.createElement('button',{onClick:findClient,disabled:loading,style:{width:'100%',padding:'13px',marginTop:'8px',borderRadius:'14px',border:'none',cursor:'pointer',background:'linear-gradient(135deg,#D4AF37,#E8C84A)',color:'#070d1a',fontSize:'14px',fontWeight:900,fontFamily:'Cairo,sans-serif',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px',boxShadow:'0 6px 20px rgba(212,175,55,.3)',opacity:loading?.7:1}},
+        loading?React.createElement(Ic.Spin):'التالي ←'
+      ),
+      React.createElement('p',{style:{textAlign:'center',marginTop:'16px',fontSize:'10px',color:'var(--t3)'}},'🔒 منصة مؤمّنة — بياناتك في أمان تام')
+    )
+  );
+}
+
+// ════════════════════════
+//  جلسة واحدة (Timeline)
+// ════════════════════════
+function SessionCard({s,isLast}){
+  const today=new Date().toISOString().slice(0,10);
+  const up=s.session_date>today,td=s.session_date===today;
+  const col=td?'#f59e0b':up?'#60a5fa':'#22c55e';
+  return React.createElement('div',{style:{display:'flex',gap:'12px',paddingBottom:isLast?0:'18px'}},
+    React.createElement('div',{style:{display:'flex',flexDirection:'column',alignItems:'center',paddingTop:'3px'}},
+      React.createElement('div',{style:{width:'10px',height:'10px',borderRadius:'50%',background:col,border:'2px solid var(--bg)',boxShadow:`0 0 0 3px ${col}33`,flexShrink:0}}),
+      !isLast&&React.createElement('div',{style:{width:'2px',flex:1,background:'linear-gradient(to bottom,rgba(212,175,55,.3),transparent)',marginTop:'4px',minHeight:'28px'}})
+    ),
+    React.createElement('div',{style:{flex:1,background:'var(--card)',border:`1px solid ${td?'rgba(245,158,11,.3)':up?'rgba(96,165,250,.15)':'var(--b1)'}`,borderRadius:'14px',padding:'13px 15px',marginBottom:'4px'}},
+      React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'7px'}},
+        React.createElement('span',{style:{fontSize:'12px',fontWeight:900,color:col}},(td?'🔴 اليوم — ':up?'📅 ':'')+fmtShort(s.session_date)),
+        up&&React.createElement('span',{style:{fontSize:'10px',background:'rgba(96,165,250,.1)',color:'#60a5fa',border:'1px solid rgba(96,165,250,.2)',borderRadius:'20px',padding:'2px 8px',fontWeight:700}},'قادمة')
+      ),
+      s.description&&React.createElement('p',{style:{fontSize:'12px',color:'var(--t1)',lineHeight:'1.7',marginBottom:0}},s.description),
+      s.result&&React.createElement('div',{style:{background:'rgba(34,197,94,.07)',border:'1px solid rgba(34,197,94,.15)',borderRadius:'10px',padding:'8px 12px',marginTop:'8px'}},
+        React.createElement('p',{style:{fontSize:'10px',fontWeight:700,color:'#22c55e',marginBottom:'3px'}},'✅ نتيجة الجلسة'),
+        React.createElement('p',{style:{fontSize:'11px',color:'var(--t2)',lineHeight:'1.6'}},s.result)
+      ),
+      s.next_action&&React.createElement('div',{style:{background:'rgba(245,158,11,.07)',border:'1px solid rgba(245,158,11,.15)',borderRadius:'10px',padding:'8px 12px',marginTop:'8px'}},
+        React.createElement('p',{style:{fontSize:'10px',fontWeight:700,color:'#f59e0b',marginBottom:'3px'}},'⏭ الإجراء القادم'),
+        React.createElement('p',{style:{fontSize:'11px',color:'var(--t2)',lineHeight:'1.6'}},s.next_action)
+      )
+    )
+  );
+}
+
+// ════════════════════════
+//  مستند
+// ════════════════════════
+function DocRow({doc}){
+  const ext=(doc.file_name||'').split('.').pop().toLowerCase();
+  const ico={pdf:'📄',jpg:'🖼',jpeg:'🖼',png:'🖼',doc:'📝',docx:'📝',xlsx:'📊'}[ext]||'📎';
+  return React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'12px',background:'var(--card)',border:'1px solid var(--b1)',borderRadius:'14px',padding:'12px 14px',marginBottom:'8px'}},
+    React.createElement('div',{style:{width:'38px',height:'38px',borderRadius:'10px',background:'var(--bg2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',flexShrink:0}},ico),
+    React.createElement('div',{style:{flex:1,minWidth:0}},
+      React.createElement('p',{style:{fontSize:'12px',fontWeight:700,color:'var(--t1)',marginBottom:'3px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},doc.file_name||'مستند'),
+      React.createElement('p',{style:{fontSize:'10px',color:'var(--t3)'}},fmtShort(doc.created_at))
+    ),
+    doc.file_url&&React.createElement('a',{href:doc.file_url,target:'_blank',rel:'noreferrer',style:{width:'34px',height:'34px',borderRadius:'10px',background:'var(--gold-dim)',border:'1px solid var(--gold-b)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--gold-l)',flexShrink:0,textDecoration:'none'}},
+      React.createElement(Ic.Download,{s:15})
+    )
+  );
+}
+
+// ════════════════════════
+//  الأتعاب
+// ════════════════════════
+function FeesPanel({caseId,token}){
+  const [fees,setFees]=useState([]);
+  const [loading,setLoading]=useState(true);
+  useEffect(()=>{callApi('getCaseFees',{token,caseId}).then(({data})=>{setFees(data||[]);setLoading(false);}).catch(()=>setLoading(false));},[caseId]);
+  if(loading)return React.createElement('div',{style:{padding:'20px'}},React.createElement('div',{className:"skeleton",style:{height:'70px',marginBottom:'10px'}}));
+  if(!fees.length)return React.createElement('div',{style:{padding:'40px',textAlign:'center'}},React.createElement('div',{style:{fontSize:'36px',marginBottom:'10px'}},'💰'),React.createElement('p',{style:{fontSize:'13px',fontWeight:700,color:'var(--t2)'}},'لا توجد أتعاب مسجلة'));
+  const total=fees.reduce((s,f)=>s+(f.total_fees||0),0);
+  const paid=fees.reduce((s,f)=>s+(f.paid_fees||0),0);
+  const rem=total-paid;
+  const pct=total>0?Math.round((paid/total)*100):0;
+  return React.createElement('div',{style:{padding:'16px'}},
+    React.createElement('div',{style:{background:'linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.05))',border:'1px solid var(--gold-b)',borderRadius:'18px',padding:'18px',marginBottom:'14px'}},
+      React.createElement('p',{style:{fontSize:'11px',fontWeight:700,color:'var(--gold-l)',marginBottom:'12px'}},'📊 ملخص الأتعاب'),
+      React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px',textAlign:'center',marginBottom:'14px'}},
+        [{l:'الإجمالي',v:fmtNum(total),c:'var(--t1)'},{l:'المسدّد',v:fmtNum(paid),c:'#22c55e'},{l:'المتبقي',v:fmtNum(rem),c:rem>0?'#f87171':'#22c55e'}].map(x=>
+          React.createElement('div',{key:x.l,style:{background:'rgba(0,0,0,.2)',borderRadius:'12px',padding:'10px 4px'}},
+            React.createElement('p',{style:{fontSize:'14px',fontWeight:900,color:x.c,marginBottom:'2px'}},x.v),
+            React.createElement('p',{style:{fontSize:'9px',color:'var(--t3)'}},'ج.م'),
+            React.createElement('p',{style:{fontSize:'9px',color:'var(--t2)'}},x.l)
+          )
+        )
+      ),
+      React.createElement('div',{style:{background:'rgba(255,255,255,.06)',borderRadius:'6px',height:'6px',overflow:'hidden'}},
+        React.createElement('div',{style:{height:'100%',width:pct+'%',background:rem<=0?'#22c55e':'#D4AF37',borderRadius:'6px',transition:'width .6s'}})),
+      React.createElement('p',{style:{fontSize:'10px',color:'var(--t2)',marginTop:'6px',textAlign:'center'}},pct+'% تم سداده')
+    )
+  );
+}
+
+// ════════════════════════
+//  المحادثة
+// ════════════════════════
+function Chat({clientId,clientName,token}){
+  const [msgs,setMsgs]=useState([]);
+  const [text,setText]=useState('');
+  const [sending,setSending]=useState(false);
+  const [loading,setLoading]=useState(true);
+  const bottomRef=useRef(null);
+  useEffect(()=>{
+    callApi('getMessages',{token}).then(({data})=>{setMsgs(data||[]);setLoading(false);}).catch(()=>setLoading(false));
+  },[clientId]);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:'smooth'});},[msgs]);
+  // تحديث الرسائل بشكل دوري بدل الاتصال المباشر القديم (كل 7 ثواني)
+  useEffect(()=>{
+    const iv=setInterval(()=>{
+      callApi('getMessages',{token}).then(({data})=>{if(data)setMsgs(data);}).catch(()=>{});
+    },7000);
+    return()=>clearInterval(iv);
+  },[clientId,token]);
+  const send=async()=>{
+    if(!text.trim()||sending)return;
+    setSending(true);
+    try{
+      await callApi('sendMessage',{token,content:text.trim()});
+      setText('');
+      const{data}=await callApi('getMessages',{token});
+      setMsgs(data||[]);
+    }catch(e){toast('تعذر الإرسال',true);}
+    setSending(false);
+  };
+  return React.createElement('div',{style:{display:'flex',flexDirection:'column',height:'calc(100vh - 180px)'}},
+    React.createElement('div',{style:{flex:1,overflowY:'auto',padding:'14px',display:'flex',flexDirection:'column',gap:'10px'}},
+      loading&&[1,2].map(i=>React.createElement('div',{key:i,style:{display:'flex',justifyContent:i%2?'flex-end':'flex-start'}},React.createElement('div',{className:"skeleton",style:{height:'44px',width:'55%',borderRadius:'14px'}}))),
+      !loading&&!msgs.length&&React.createElement('div',{style:{textAlign:'center',padding:'48px 20px',color:'var(--t3)'}},
+        React.createElement('div',{style:{fontSize:'40px',marginBottom:'10px'}},'💬'),
+        React.createElement('p',{style:{fontSize:'13px',fontWeight:700,color:'var(--t2)',marginBottom:'5px'}},'ابدأ محادثة مع المحامي'),
+        React.createElement('p',{style:{fontSize:'11px'}},'يمكنك طرح أسئلتك ومتابعة قضيتك')
+      ),
+      msgs.map((m,i)=>{
+        const isCl=m.sender==='client';
+        return React.createElement('div',{key:m.id||i,style:{display:'flex',justifyContent:isCl?'flex-end':'flex-start'}},
+          React.createElement('div',{style:{maxWidth:'78%',background:isCl?'linear-gradient(135deg,#D4AF37,#E8C84A)':'var(--card2)',border:isCl?'none':'1px solid var(--b1)',borderRadius:isCl?'18px 18px 4px 18px':'18px 18px 18px 4px',padding:'10px 14px',boxShadow:isCl?'0 4px 14px rgba(212,175,55,.25)':'none'}},
+            React.createElement('p',{style:{fontSize:'12px',color:isCl?'#070d1a':'var(--t1)',lineHeight:'1.6',fontWeight:isCl?700:400}},m.content),
+            React.createElement('p',{style:{fontSize:'9px',color:isCl?'rgba(5,14,31,.5)':'var(--t3)',marginTop:'3px',textAlign:'left',direction:'ltr'}},new Date(m.created_at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}))
+          )
+        );
+      }),
+      React.createElement('div',{ref:bottomRef})
+    ),
+    React.createElement('div',{style:{padding:'10px 14px',borderTop:'1px solid var(--b1)',background:'var(--bg2)',display:'flex',gap:'10px',alignItems:'flex-end'}},
+      React.createElement('textarea',{value:text,onChange:e=>setText(e.target.value),onKeyDown:e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}},placeholder:'اكتب رسالتك...',rows:1,style:{flex:1,padding:'10px 13px',fontSize:'13px',maxHeight:'90px',overflow:'auto',background:'var(--card)',border:'1px solid var(--b2)',borderRadius:'13px',color:'var(--t1)',lineHeight:'1.5'}}),
+      React.createElement('button',{onClick:send,disabled:sending||!text.trim(),style:{width:'42px',height:'42px',borderRadius:'13px',border:'none',cursor:'pointer',background:text.trim()?'linear-gradient(135deg,#D4AF37,#E8C84A)':'var(--card)',color:text.trim()?'#070d1a':'var(--t3)',display:'flex',alignItems:'center',justifyContent:'center',transition:'all .2s',flexShrink:0}},
+        sending?React.createElement(Ic.Spin):React.createElement(Ic.Send,{s:17})
+      )
+    )
+  );
+}
+
+// ════════════════════════
+//  تفاصيل قضية
+// ════════════════════════
+function CaseDetail({c,client,token,onBack}){
+  const [sessions,setSessions]=useState(null);
+  const [docs,setDocs]=useState(null);
+  const [tab,setTab]=useState('sessions');
+  const today=new Date().toISOString().slice(0,10);
+  useEffect(()=>{
+    callApi('getCaseSessions',{token,caseId:c.id}).then(({data})=>setSessions(data||[])).catch(()=>setSessions([]));
+    callApi('getCaseDocuments',{token,caseId:c.id}).then(({data})=>setDocs(data||[])).catch(()=>setDocs([]));
+  },[c.id]);
+  const st=ST[c.status]||{cls:'b-pending',icon:'⏳'};
+  const upcoming=(sessions||[]).filter(s=>s.session_date>=today).sort((a,b)=>a.session_date.localeCompare(b.session_date));
+  const past=(sessions||[]).filter(s=>s.session_date<today).sort((a,b)=>b.session_date.localeCompare(a.session_date));
+  const ordered=[...upcoming,...past];
+  const TABS=[
+    {k:'sessions',l:'الجلسات',i:React.createElement(Ic.Calendar,{s:15})},
+    {k:'fees',l:'الأتعاب',i:React.createElement(Ic.Money,{s:15})},
+    {k:'chat',l:'التواصل',i:React.createElement(Ic.Chat,{s:15})}
+  ];
+  // ترتيب تسلسلي من الأقدم للأحدث
+  const allSessions=(sessions||[]).slice().sort((a,b)=>a.session_date.localeCompare(b.session_date));
+
+  return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column'}},
+    React.createElement('div',{style:{padding:'14px 16px',borderBottom:'1px solid var(--b1)',background:'var(--bg2)',position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)'}},
+      React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'10px',marginBottom:'10px'}},
+        React.createElement('button',{onClick:onBack,style:{width:'34px',height:'34px',borderRadius:'10px',background:'var(--card)',border:'1px solid var(--b2)',color:'var(--t2)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'16px',flexShrink:0}},'→'),
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('p',{style:{fontSize:'10px',color:'var(--gold-l)',fontWeight:700,marginBottom:'3px'}},c.type||'قضية'),
+          React.createElement('h2',{style:{fontSize:'15px',fontWeight:900,color:'var(--t1)',margin:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.title)
+        ),
+        React.createElement('span',{className:`badge ${st.cls}`},st.icon,' ',c.status)
+      ),
+      React.createElement('div',{style:{display:'flex',gap:'14px',flexWrap:'wrap'}},
+        c.court&&c.court!=='—'&&React.createElement('span',{style:{fontSize:'10px',color:'var(--t2)'}},'📍 '+c.court),
+        c.number&&c.number!=='—'&&React.createElement('span',{style:{fontSize:'10px',color:'var(--t3)'}},'🔢 '+c.number),
+        upcoming.length>0&&React.createElement('span',{style:{fontSize:'10px',color:'#60a5fa',fontWeight:700}},'📅 '+fmtShort(upcoming[0].session_date))
+      )
+    ),
+    React.createElement('div',{style:{display:'flex',borderBottom:'1px solid var(--b1)',background:'var(--bg)'}},
+      TABS.map(t=>React.createElement('button',{key:t.k,onClick:()=>setTab(t.k),className:`tab-${tab===t.k?'a':'i'}`,style:{flex:1,padding:'10px 3px',border:'none',cursor:'pointer',background:'transparent',fontSize:'10px',fontWeight:900,fontFamily:'Cairo,sans-serif',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',transition:'all .2s'}},
+        React.createElement('span',{style:{color:'inherit'}},t.i),t.l
+      ))
+    ),
+    React.createElement('div',{style:{flex:1,overflowY:'auto'}},
+      tab==='sessions'&&React.createElement('div',{style:{padding:'16px'}},
+        // عداد الجلسات
+        sessions&&allSessions.length>0&&React.createElement('div',{style:{background:'var(--gold-dim)',border:'1px solid var(--gold-b)',borderRadius:'12px',padding:'10px 14px',marginBottom:'14px',display:'flex',alignItems:'center',gap:'8px'}},
+          React.createElement('span',{style:{fontSize:'16px'}},'📋'),
+          React.createElement('span',{style:{fontSize:'11px',fontWeight:700,color:'var(--gold-l)'}},'إجمالي الجلسات: '+allSessions.length+' جلسة'),
+          React.createElement('span',{style:{fontSize:'10px',color:'var(--t2)',marginRight:'auto'}},'القادمة: '+upcoming.length)
+        ),
+        !sessions?[1,2,3].map(i=>React.createElement('div',{key:i,className:"skeleton",style:{height:'80px',marginBottom:'10px',borderRadius:'14px'}})):
+        allSessions.length===0?React.createElement('div',{style:{padding:'48px',textAlign:'center',color:'var(--t3)'}},
+          React.createElement('div',{style:{fontSize:'36px',marginBottom:'10px'}},'🗓'),
+          React.createElement('p',{style:{fontSize:'13px',fontWeight:700,color:'var(--t2)'}},'لا توجد جلسات بعد')
+        ):
+        allSessions.map((s,i)=>React.createElement(SessionCard,{key:s.id,s,isLast:i===allSessions.length-1}))
+      ),
+      tab==='fees'&&React.createElement(FeesPanel,{caseId:c.id,token}),
+      tab==='chat'&&React.createElement(Chat,{clientId:client.id,clientName:getName(client),token})
+    )
+  );
+}
+
+// ════════════════════════
+//  الرئيسية (قائمة القضايا)
+// ════════════════════════
+function Portal({client,token}){
+  const [cases,setCases]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState(null);
+  const [mainTab,setMainTab]=useState('cases');
+  const name=getName(client);
+
+  useEffect(()=>{
+    callApi('getCases',{token}).then(({data})=>{setCases(data||[]);setLoading(false);}).catch(()=>setLoading(false));
+  },[client.id]);
+
+  if(selected)return React.createElement(CaseDetail,{c:selected,client,token,onBack:()=>setSelected(null)});
+
+  return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column'}},
+    // هيدر
+    React.createElement('div',{style:{padding:'14px 16px',borderBottom:'1px solid var(--b1)',background:'var(--bg2)',position:'sticky',top:0,zIndex:10,backdropFilter:'blur(12px)'}},
+      React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
+        React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'11px'}},
+          React.createElement('div',{style:{width:'40px',height:'40px',borderRadius:'12px',background:'linear-gradient(135deg,#D4AF37,#E8C84A)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',fontWeight:900,color:'#070d1a',flexShrink:0}},(name||'م').charAt(0)),
+          React.createElement('div',null,
+            React.createElement('h1',{style:{fontSize:'14px',fontWeight:900,color:'var(--t1)',margin:0}},'أهلاً، '+name),
+            React.createElement('p',{style:{fontSize:'10px',color:'var(--gold-l)',display:'flex',alignItems:'center',gap:'4px',margin:'2px 0 0'}},React.createElement(Ic.Shield,{s:11}),'بوابة الموكل — سَنَد')
+          )
+        ),
+        React.createElement('button',{onClick:()=>{clearSession();window.location.reload();},style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(248,113,113,.1)',border:'1px solid rgba(248,113,113,.2)',color:'#f87171',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}},
+          React.createElement(Ic.Logout,{s:16})
+        )
+      )
+    ),
+    // تابات
+    React.createElement('div',{style:{display:'flex',borderBottom:'1px solid var(--b1)',background:'var(--bg)'}},
+      [{k:'cases',l:'قضاياي',i:React.createElement(Ic.Scale,{s:15})},{k:'chat',l:'التواصل',i:React.createElement(Ic.Chat,{s:15})}].map(t=>
+        React.createElement('button',{key:t.k,onClick:()=>setMainTab(t.k),className:`tab-${mainTab===t.k?'a':'i'}`,style:{flex:1,padding:'11px 8px',border:'none',cursor:'pointer',background:'transparent',fontSize:'11px',fontWeight:900,fontFamily:'Cairo,sans-serif',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',transition:'all .2s'}},
+          React.createElement('span',{style:{color:'inherit'}},t.i),t.l
+        )
+      )
+    ),
+    // محتوى
+    React.createElement('div',{style:{flex:1,overflowY:'auto',padding:mainTab==='chat'?0:'16px'}},
+      mainTab==='cases'&&React.createElement('div',{className:"fi"},
+        React.createElement('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginBottom:'16px'}},
+          React.createElement('div',{className:"fu s1",style:{background:'var(--card)',border:'1px solid var(--b1)',borderRadius:'16px',padding:'14px'}},
+            React.createElement('p',{style:{fontSize:'26px',fontWeight:900,color:'var(--t1)',margin:0}},cases.length),
+            React.createElement('p',{style:{fontSize:'10px',color:'var(--t2)',margin:'2px 0 0'}},'إجمالي القضايا')
+          ),
+          React.createElement('div',{className:"fu s2",style:{background:'linear-gradient(135deg,rgba(212,175,55,.12),rgba(212,175,55,.05))',border:'1px solid var(--gold-b)',borderRadius:'16px',padding:'14px'}},
+            React.createElement('p',{style:{fontSize:'26px',fontWeight:900,color:'var(--gold-l)',margin:0}},cases.filter(c=>c.status==='نشطة').length),
+            React.createElement('p',{style:{fontSize:'10px',color:'var(--t2)',margin:'2px 0 0'}},'قضايا نشطة')
+          )
+        ),
+        loading?[1,2,3].map(i=>React.createElement('div',{key:i,className:"skeleton",style:{height:'100px',marginBottom:'10px',borderRadius:'18px'}})):
+        cases.length===0?React.createElement('div',{style:{padding:'48px 20px',textAlign:'center'}},
+          React.createElement('div',{style:{fontSize:'40px',marginBottom:'12px'}},'⚖️'),
+          React.createElement('p',{style:{fontSize:'14px',fontWeight:700,color:'var(--t2)'}},'لا توجد قضايا مرتبطة'),
+          React.createElement('p',{style:{fontSize:'11px',color:'var(--t3)'}},'تواصل مع مكتبنا إذا اعتقدت أن هذا خطأ')
+        ):
+        cases.map((c,i)=>{
+          const st=ST[c.status]||{cls:'b-pending',icon:'⏳'};
+          return React.createElement('div',{key:c.id,className:`card-h fu s${Math.min(i+1,4)}`,onClick:()=>setSelected(c),style:{background:'var(--card)',border:'1px solid var(--b1)',borderRadius:'18px',padding:'16px',marginBottom:'12px'}},
+            React.createElement('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'10px'}},
+              React.createElement('div',{style:{display:'flex',alignItems:'center',gap:'6px'}},
+                React.createElement('div',{style:{width:'28px',height:'28px',borderRadius:'8px',background:'var(--gold-dim)',border:'1px solid var(--gold-b)',display:'flex',alignItems:'center',justifyContent:'center'}},React.createElement(Ic.Scale,{s:13})),
+                React.createElement('span',{style:{fontSize:'10px',fontWeight:700,color:'var(--gold-l)'}},c.type||'قضية')
+              ),
+              React.createElement('span',{className:`badge ${st.cls}`},st.icon,' ',c.status)
+            ),
+            React.createElement('h3',{style:{fontSize:'14px',fontWeight:900,color:'var(--t1)',margin:'0 0 8px',lineHeight:'1.4'}},c.title),
+            React.createElement('div',{style:{display:'flex',gap:'12px',flexWrap:'wrap'}},
+              c.court&&c.court!=='—'&&React.createElement('span',{style:{fontSize:'10px',color:'var(--t2)'}},'📍 '+c.court),
+              c.number&&c.number!=='—'&&React.createElement('span',{style:{fontSize:'10px',color:'var(--t3)'}},'# '+c.number)
+            )
+          );
+        })
+      ),
+      mainTab==='chat'&&React.createElement(Chat,{clientId:client.id,clientName:name,token})
+    ),
+    React.createElement('div',{style:{padding:'8px 16px',borderTop:'1px solid var(--b1)',textAlign:'center'}},
+      React.createElement('p',{style:{fontSize:'9px',color:'var(--t3)',display:'flex',alignItems:'center',justifyContent:'center',gap:'4px'}},React.createElement(Ic.Shield,{s:10}),'منصة مؤمّنة | سَنَد')
+    )
+  );
+}
+
+// ════════════════════════
+//  App
+// ════════════════════════
+function App(){
+  const [state,setState]=useState('loading');
+  const [client,setClient]=useState(null);
+  const [token,setToken]=useState(null);
+  useEffect(()=>{
+    const s=loadSession();
+    if(s){
+      callApi('getClient',{token:s.token}).then(({data})=>{
+        if(data){setClient(data);setToken(s.token);setState('portal');}
+        else{clearSession();setState('login');}
+      }).catch(()=>{clearSession();setState('login');});
+    } else setState('login');
+  },[]);
+  if(state==='loading')return React.createElement('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'14px'}},
+    React.createElement('div',{style:{width:'56px',height:'56px',borderRadius:'16px',background:'#0B1320',display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid rgba(212,175,55,0.2)'}},
+      React.createElement('svg',{width:38,height:38,viewBox:'0 0 40 40'},
+          React.createElement('line',{x1:'6',y1:'13',x2:'34',y2:'13',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+          React.createElement('line',{x1:'9.5',y1:'21',x2:'34',y2:'21',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+          React.createElement('line',{x1:'13',y1:'29',x2:'34',y2:'29',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+          React.createElement('line',{x1:'6',y1:'13',x2:'6',y2:'32',stroke:'#D4AF37',strokeWidth:'4.5',strokeLinecap:'round'}),
+          React.createElement('circle',{cx:'6',cy:'13',r:'4.5',fill:'#D4AF37'})
+      )
+    ),
+    React.createElement(Ic.Spin),
+    React.createElement('p',{style:{fontSize:'11px',color:'var(--t3)'}},'جاري التحقق...')
+  );
+  if(state==='login')return React.createElement(LoginScreen,{onLogin:(cl,tok)=>{setClient(cl);setToken(tok);setState('portal');}});
+  return React.createElement(Portal,{client,token});
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
