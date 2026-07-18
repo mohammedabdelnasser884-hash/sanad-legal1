@@ -229,6 +229,7 @@ function App() {
                     cases, clients,
                     onOpenCase: (c) => { setSelectedCase(c, 'timeline'); },
                     onOpenReminders: () => { setRemindersInitialFilter('overdue'); setTab('reminders'); },
+                    onClientAdded: () => { fetchClients(0, clientSearch); },
                     initialTab: sessionsInitialTab ?? undefined,
                 })
             ),
@@ -270,6 +271,7 @@ function App() {
             _setDeleteConfirm, _setSelectedClient, _setSelectedCase,
             setCases, setCasesFilter, setCasesPage,
             fetchCases, fetchTodaySessions, fetchUpcomingSessions,
+            fetchClients, clientSearch,
             handleSaveCase, handleDeleteCase, handleUpdateCase,
             handleSaveClient, handleDeleteClient, handleUpdateClient, handleSaveLawyer,
             sendTelegram,
