@@ -38,9 +38,15 @@ interface CalendarTabProps {
     clients: MappedClient[];
     onOpenCase: (c: MappedCase) => void;
     onOpenStandalone: (s: CalendarSessionRow) => void;
+    // ⚡ [جديد] بيتغيّر كل ما إجراء يحصل على جلسة (ربط/تعديل/حذف/تحديث) من
+    // موديل StandaloneSessionDetailModal — إضافته في dependency array بتاع
+    // useEffect تحت بتجبر إعادة جلب allSessions، عشان case_id المحدّث
+    // (بعد إنشاء قضية من الزرار "🔗 ربط" مثلاً) يوصل فورًا من غير ما
+    // المستخدم يغيّر الشهر أو يبدّل تاب يدوي.
+    refreshKey?: number;
 }
 
-function CalendarTab({ cases, clients, onOpenCase, onOpenStandalone }: CalendarTabProps) {
+function CalendarTab({ cases, clients, onOpenCase, onOpenStandalone, refreshKey }: CalendarTabProps) {
     const today = new Date();
     const [viewYear,  setViewYear]  = useState(today.getFullYear());
     const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -63,7 +69,7 @@ function CalendarTab({ cases, clients, onOpenCase, onOpenStandalone }: CalendarT
           .then(({ data }) => {
               setAllSessions((data || []) as unknown as CalendarSessionRow[]); setLoading(false); setSelectedDay(null);
           });
-    }, [viewYear, viewMonth]);
+    }, [viewYear, viewMonth, refreshKey]);
 
     const firstDay  = new Date(viewYear, viewMonth, 1).getDay();
     const daysInMon = new Date(viewYear, viewMonth+1, 0).getDate();
