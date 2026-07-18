@@ -60,9 +60,11 @@ interface AdminPanelProps {
     lawyers: ProfileRow[];
     clients: ClientRow[];
     fetchLawyers: () => void;
+    country: string;
+    onCountryChange: (country: string) => void;
 }
 
-export default function AdminPanel({ profile, lawyers, clients, fetchLawyers }: AdminPanelProps) {
+export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, country, onCountryChange }: AdminPanelProps) {
   const [section, setSection] = useState<SectionId>(null);
 
   // ── قفل الـ scroll ──
@@ -542,7 +544,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers }: 
     // ══════════════════════════
     //  SECTION: إعدادات المكتب
     // ══════════════════════════
-    section === 'office' && React.createElement(OfficeSection, { loadingOffice, logoPreview, setLogoFile, setLogoPreview, officeSettings, setOfficeSettings, savingOffice, handleSaveOfficeSettings }),
+    section === 'office' && React.createElement(OfficeSection, { loadingOffice, logoPreview, setLogoFile, setLogoPreview, officeSettings, setOfficeSettings, savingOffice, handleSaveOfficeSettings, country, onCountryChange, profile }),
 
     // ══════════════════════════
     //  SECTION: المكتبة القانونية
