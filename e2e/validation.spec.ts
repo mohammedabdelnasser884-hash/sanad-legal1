@@ -96,6 +96,7 @@ test.describe('فاليديشن الحقول المطلوبة', () => {
     const clientName = `اختبار E2E - موكل فاليديشن - ${Date.now()}`;
     await page.getByTestId('new-client-button').click();
     await page.getByTestId('new-client-name').fill(clientName);
+    await page.getByTestId('new-client-phone').fill('01000000000');
     await page.getByTestId('save-client-button').click();
 
     const newClientCard = page.getByTestId('client-card').filter({ hasText: clientName });
