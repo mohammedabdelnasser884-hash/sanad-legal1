@@ -38,9 +38,13 @@ interface MonthListTabProps {
     onOpenCase: (c: MappedCase) => void;
     onOpenReminders: () => void;
     onOpenStandalone: (s: MonthSessionRow) => void;
+    // ⚡ [جديد] نفس فكرة refreshKey في CalendarTab.tsx — إجبار إعادة الجلب
+    // بعد أي إجراء على جلسة (ربط بقضية جديدة تحديدًا) عشان case_id
+    // المحدّث يبان فورًا في نفس الشاشة من غير تنقل يدوي.
+    refreshKey?: number;
 }
 
-function MonthListTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStandalone }: MonthListTabProps) {
+function MonthListTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStandalone, refreshKey }: MonthListTabProps) {
     const today    = new Date();
     const todayStr = toDateStr(today);
 
@@ -64,7 +68,7 @@ function MonthListTab({ cases, clients, onOpenCase, onOpenReminders, onOpenStand
           .then(({ data }) => {
               setSessions((data || []) as unknown as MonthSessionRow[]); setTasks([]); setLoading(false);
           });
-    }, [viewYear, viewMonth]);
+    }, [viewYear, viewMonth, refreshKey]);
 
     const prevMonth = () => { if (viewMonth === 0) { setViewMonth(11); setViewYear((y: number) => y-1); } else setViewMonth((m: number) => m-1); };
     const nextMonth = () => { if (viewMonth === 11) { setViewMonth(0); setViewYear((y: number) => y+1); } else setViewMonth((m: number) => m+1); };
