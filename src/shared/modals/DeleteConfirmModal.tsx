@@ -76,9 +76,9 @@ function DeleteConfirmModal({ title, itemName, itemType, onConfirm, onConfirmArc
     const isArchive = effectiveMode === 'archive';
     const handleConfirmClick = () => {
         if (!isMatch) return;
-        if (forcedMode) { onConfirm && onConfirm(); return; }
-        if (chosenMode === 'archive') { onConfirmArchive && onConfirmArchive(); return; }
-        if (chosenMode === 'delete') { onConfirmDelete && onConfirmDelete(); return; }
+        if (forcedMode) { onConfirm?.(); return; }
+        if (chosenMode === 'archive') { onConfirmArchive?.(); return; }
+        if (chosenMode === 'delete') { onConfirmDelete?.(); return; }
     };
 
     return React.createElement('div',{
