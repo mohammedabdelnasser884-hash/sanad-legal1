@@ -166,16 +166,6 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                                 className:`flex-1 py-2.5 rounded-xl text-[10px] font-black transition-all active:scale-95 ${form.session_time===t?'bg-premium-gold text-premium-bg':'bg-white/5 border border-white/10 text-slate-400'}`
                             },t==='صباحي'?'🌅 صباحي':'🌆 مسائي'))
                         )
-                    ),
-                    React.createElement('div',{className:"grid grid-cols-2 gap-2"},
-                        React.createElement('div',null,
-                            React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"الطابق"),
-                            React.createElement('input',{value:form.court_floor,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('court_floor',e.target.value),placeholder:"مثال: الأول",className:inputCls,style:inpStyle})
-                        ),
-                        React.createElement('div',null,
-                            React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"رقم القاعة"),
-                            React.createElement('input',{value:form.court_hall,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('court_hall',e.target.value),placeholder:"مثال: 5",className:inputCls,style:inpStyle})
-                        )
                     )
                 ),
 
@@ -203,8 +193,8 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                 ),
 
                 React.createElement('div',null,
-                    React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"قاعة الجلسة"),
-                    React.createElement('input',{value:form.session_hall,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('session_hall',e.target.value),placeholder:"رقم أو اسم قاعة الجلسة",className:inputCls,style:inpStyle})
+                    React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"الطابق وقاعة الجلسة"),
+                    React.createElement('input',{value:form.session_hall,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('session_hall',e.target.value),placeholder:"مثال: الدور الأول - قاعة 5",className:inputCls,style:inpStyle})
                 ),
                 React.createElement('div',null,
                     React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"قاعة سكرتير الجلسة"),
