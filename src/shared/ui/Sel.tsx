@@ -7,13 +7,16 @@ import React from 'react';
 // كل نداء بيحط label من عمود DB nullable (FeesTab/LegalLibraryModal/NewCaseModal).
 // السماح بـ null/undefined هنا وعرضه كـ '—' وقت العرض بس، من غير أي تغيير
 // في شكل الـ options اللي بيتبعتوا فعليًا من الأماكن التانية.
-export const Sel = ({ label, value, onChange, options, testId }: {
+export const Sel = ({ label, value, onChange, options, testId, required }: {
     label?: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
     options: Array<{ value: string; label: string | null | undefined } | string>;
-    testId?: string;
+    testId?: string; required?: boolean;
 }) =>
     React.createElement('div', null,
-        label && React.createElement('label', { className: "block text-[10px] font-bold text-slate-400 mb-1.5" }, label),
+        label && React.createElement('label', { className: "block text-[10px] font-bold text-slate-400 mb-1.5" },
+            label,
+            required && React.createElement('span', { className: "text-rose-400 mr-1" }, "*")
+        ),
         React.createElement('select', {
             value, onChange,
             'data-testid': testId,
