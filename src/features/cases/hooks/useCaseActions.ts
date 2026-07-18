@@ -97,6 +97,16 @@ export function useCaseActions(params: {
             return;
         }
         setSavingCase(true);
+        // 🔒 FIX (تتبع زر "إضافة قضية" — 18 يوليو 2026): معرّف مؤقت client-side
+        // فريد لكل عملية إضافة قضية أوفلاين. بيتبعت مع القضية نفسها (وبيتشال
+        // قبل أي INSERT حقيقي — شوف stripOfflineSentinels في offlineQueue.ts)،
+        // وبيتبعت تاني مع الجلسة الأولى بتاعتها كـ _offlineCaseTempId. وقت
+        // المزامنة، الجلسة بتتربط بالـ id الحقيقي للقضية عن طريق مطابقة
+        // المعرّف المؤقت ده (مطابقة مضمونة 100%) بدل البحث بالعنوان (اللي كان
+        // ممكن يربط غلط لو فيه قضيتين اتضافوا أوفلاين بنفس العنوان بالظبط).
+        // العنوان لسه متبعت (fallback) للحالة النادرة اللي القضية بتاعتها
+        // اتزامنت في تشغيلة سابقة قبل ما الجلسة توصلها الدور.
+        const offlineTempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
         const payload = {
             case_number_official: form.number || null,
             title: form.title,
@@ -112,20 +122,23 @@ export function useCaseActions(params: {
             session_hall: form.session_hall || null,
             secretary_hall: form.secretary_hall || null,
             secretary_name: form.secretary_name || null,
+            _offlineTempId: offlineTempId,
         };
         const offlineId = 'offline-' + Date.now();
         const { error, offline, queued, data: insertedCase } = await window.__dbWrite({
             type: 'INSERT', table: 'cases', data: payload, returning: true
         });
         if (offline && queued) {
-            // BUG-20 FIX: لو فيه تاريخ جلسة، نحفظها في الـ queue مع _offlineCaseTitle
-            // عشان الـ sync handler يقدر يربطها بالـ id الحقيقي بعد ما القضية تتزامن
+            // BUG-20 FIX: لو فيه تاريخ جلسة، نحفظها في الـ queue مع _offlineCaseTempId
+            // (+ _offlineCaseTitle كـ fallback) عشان الـ sync handler يقدر يربطها
+            // بالـ id الحقيقي بعد ما القضية تتزامن
             if (form.date) {
                 await window.__dbWrite({
                     type: 'INSERT',
                     table: 'case_sessions',
                     data: {
-                        _offlineCaseTitle: form.title,   // الـ sync handler هيستخدمه
+                        _offlineCaseTempId: offlineTempId, // مطابقة أساسية دقيقة
+                        _offlineCaseTitle: form.title,     // fallback لو التشغيلة مختلفة
                         case_id: null,                   // هيتملى وقت المزامنة
                         session_date: form.date,
                         session_time: form.session_time || 'صباحي',
@@ -166,7 +179,7 @@ export function useCaseActions(params: {
                 // موجودة فعليًا، بس الجلسة الأولى محتاجة تتضاف يدويًا.
                 toast('⚠️ القضية اتسجلت، بس الجلسة الأولى محتاجة تتضاف يدويًا من صفحة القضية', true);
             }
-            toast('✅ تم تقييد الدعوى في السيرفر السحابي!');
+            toast('✅ تم الحفظ في نظام سند!');
             // إشعار تليجرام
             const caseNumLabel = form.caseNum && form.caseYear
                 ? `${form.caseNum} لسنة ${form.caseYear}`
