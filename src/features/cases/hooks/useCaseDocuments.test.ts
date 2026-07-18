@@ -88,7 +88,7 @@ function makeCase(overrides: Partial<MappedCase> = {}): MappedCase {
   return {
     id: 'case-1', number: '10', title: 'قضية مدنية', court: 'محكمة الجيزة', type: 'مدني',
     court_level: null, circuit_number: null, status: 'نشطة', date: '2026-07-01', client_id: 'client-1',
-    plaintiff: null, defendant: null, year: 2026, updated_at: '2026-07-16T10:00:00.000Z', court_floor: null,
+    plaintiff: null, plaintiff_role: null, defendant: null, defendant_role: null, year: 2026, updated_at: '2026-07-16T10:00:00.000Z', court_floor: null,
     court_hall: null, session_hall: null, secretary_hall: null, secretary_name: null, session_time: null,
     ...overrides,
   } as MappedCase;
