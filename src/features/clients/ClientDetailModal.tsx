@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { I } from '../../constants';
 import { formatPhoneForWhatsApp } from '../../shared/lib/validation';
 import { useResolvedStorageUrl } from '../../shared/lib/storage';
 import EditClientModal from './EditClientModal';
-import DeleteConfirmModal from '@/shared/modals/DeleteConfirmModal';
 import type { ClientRow } from '../../types';
 import type { MappedCase } from '../../hooks/useAppData';
 import type { ClientContactInfo, ClientFormData } from './hooks/useClientActions';
@@ -21,7 +19,6 @@ interface ClientDetailModalProps {
 function ClientDetailModal({client:c, cases, onClose, onDelete, onEdit, onOpenCase}: ClientDetailModalProps){
     const typeLabel=c.type==='individual'?'فرد':c.type==='company'?'شركة':c.type==='government'?'جهة حكومية':c.type||'فرد';
     const [imgViewer,setImgViewer]=useState<string|null>(null);
-    const [confirmDeleteClient, setConfirmDeleteClient]=useState(false);
     const [showEditClient, setShowEditClient]=useState(false);
     // ⚠️ client-docs باكت private — الرابط المتخزن في contact_info ممكن
     // يكون منتهي/رابط عام قديم، فبنولّد رابط موقّع طازة وقت فتح المودال.
@@ -52,7 +49,7 @@ function ClientDetailModal({client:c, cases, onClose, onDelete, onEdit, onOpenCa
                             className:"w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-premium-gold hover:border-premium-gold/30 active:scale-90 transition-all"
                         },React.createElement(I.Edit)),
                         React.createElement('button',{
-                            onClick:()=>setConfirmDeleteClient(true),
+                            onClick:()=>{ onDelete?.(c.id); },
                             className:"w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all"
                         },React.createElement(I.Trash))
                     )
@@ -71,17 +68,6 @@ function ClientDetailModal({client:c, cases, onClose, onDelete, onEdit, onOpenCa
                     )
                 )
             ),
-
-            // مودال تأكيد الحذف
-            confirmDeleteClient && createPortal(React.createElement(DeleteConfirmModal,{
-                title:"حذف الموكل",
-                itemName: c.full_name || 'م',
-                itemType:"الموكل",
-                mode:"delete",
-                loading:false,
-                onConfirm:()=>{ onDelete?.(c.id); },
-                onCancel:()=>setConfirmDeleteClient(false)
-            }), document.body),
 
             // مودال تعديل الموكل
             showEditClient && React.createElement(EditClientModal,{
@@ -183,7 +169,7 @@ function ClientDetailModal({client:c, cases, onClose, onDelete, onEdit, onOpenCa
                                 // و`ca.number` (= case_number_official الأصلي، اتطبّع في useAppData)
                                 // هو اللي بيتعرض دايمًا. الكاست بيحافظ على نفس السلوك بالظبط.
                                 const numFmt = (()=>{const p=(ca.number||(ca as unknown as { case_number_official?: string }).case_number_official||'').split('/');return p.length===2?p[0]+' لسنة '+p[1]:p[0]||'—';})();
-                                const statusColor = ca.status==='نشطة'?'#4ade80':ca.status==='مؤجلة'?'#fbbf24':ca.status==='منتهية'?'#60a5fa':'#94a3b8';
+                                const statusColor = ca.status==='نشطة'?'#4ade80':ca.status==='مؤجلة'?'#fbbf24':ca.status==='منتهية'?'#10b981':'#94a3b8';
                                 return React.createElement('div',{
                                     key:ca.id,
                                     onClick:()=>{ onClose(); onOpenCase?.(ca); },
