@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { I } from '../../constants';
 
 // ─── Sub-components ──────────────────────
-import { IconAdmin, IconToggle, IconKey, IconPortal, IconActivity, IconSecurity, IconWarning, IconBackup, IconSessions, IconOffice, ROLE_CONFIG, PERMISSION_LABELS } from './icons';
+import { IconAdmin, IconToggle, IconKey, IconPortal, IconActivity, IconSecurity, IconWarning, IconBackup, IconSessions, IconOffice, IconArchive, ROLE_CONFIG, PERMISSION_LABELS } from './icons';
 import PortalSection from './portal/PortalSection';
 import ActivitySection from './activity/ActivitySection';
 import SessionsSection from './sessions/SessionsSection';
@@ -11,6 +11,8 @@ import BackupSection from './backup/BackupSection';
 import OfficeSection from './office/OfficeSection';
 import LegalLibrarySection from './legal-library/LegalLibrarySection';
 import UsersSection from './users/UsersSection';
+import ArchiveSection from './archive/ArchiveSection';
+import type { ArchiveTabId } from './archive/ArchiveSection';
 import AdminPanelModals from './AdminPanelModals';
 import AdminPanelSectionConfirms from './AdminPanelSectionConfirms';
 
@@ -24,10 +26,11 @@ import { useAdminOffice } from './office/hooks/useAdminOffice';
 import { useAdminLegalLibrary } from './legal-library/hooks/useAdminLegalLibrary';
 import { useAdminPortal } from './portal/hooks/useAdminPortal';
 import type { PortalAccessRow } from './portal/hooks/useAdminPortal';
+import { useAdminArchive, ARCHIVE_PAGE_SIZE } from './archive/hooks/useAdminArchive';
 // ─── Types ────────────────────────────────
 import type { ProfileRow, ClientRow } from '../../types';
 
-type SectionId = 'users' | 'portal' | 'activity' | 'sessions' | 'security' | 'backup' | 'office' | 'legal_library' | null;
+type SectionId = 'users' | 'portal' | 'activity' | 'sessions' | 'security' | 'backup' | 'office' | 'legal_library' | 'archive' | null;
 
 // شكل عنصر بطاقات التنقل الرئيسية (نفس الحقول المستخدمة فعليًا في الـ .map تحت)
 interface NavCardConfig {
@@ -84,6 +87,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
   const office = useAdminOffice(profile?.tenant_id ?? null, profile);
   const library = useAdminLegalLibrary(profile);
   const portal = useAdminPortal(profile);
+  const archive = useAdminArchive(clients, profile);
 
   // ── destructure للـ render compatibility (نفس أسماء المتغيرات القديمة) ──
   const { editUser, setEditUser, showAddUser, setShowAddUser, saving, confirmDelete, setConfirmDelete, changePassUser, setChangePassUser, confirmSignOut, setConfirmSignOut, confirmLock, setConfirmLock, securityMsg, setSecurityMsg, handleEditUser, handleAddUser, handleDeleteUser, toggleUserActive, handleChangePassword, handleSignOutAllDevices, handleToggleLock } = users;
@@ -105,6 +109,47 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
   const { officeSettings, setOfficeSettings, loadingOffice, savingOffice, logoFile, setLogoFile, logoPreview, setLogoPreview, fetchOfficeSettings, handleSaveOfficeSettings } = office;
   const { laws, legalCategories, loadingLaws, showLawModal, setShowLawModal, editingLaw, setEditingLaw, confirmDeleteLaw, setConfirmDeleteLaw, savingLaw, processingLaw, fetchLaws, fetchLegalCategories, handleSaveLaw, handleProcessLaw, handleDeleteLaw } = library;
   const { portalAccess, portalClient, setPortalClient, clientSearch, setClientSearch, showAddPortalUser, setShowAddPortalUser, savingPortal, fetchPortalAccess, handleSavePortal } = portal;
+  const {
+    archivedCases, archivedCasesTotal, loadingArchivedCases,
+    archivedCasesPage, setArchivedCasesPage,
+    archivedCasesSearch, setArchivedCasesSearch,
+    restoringCaseId, confirmDeleteCase, setConfirmDeleteCase, deletingCase,
+    fetchArchivedCases, handleRestoreCase, handlePermanentDeleteCase,
+
+    archivedClients, archivedClientsTotal, loadingArchivedClients,
+    archivedClientsPage, setArchivedClientsPage,
+    archivedClientsSearch, setArchivedClientsSearch,
+    restoringClientId, confirmDeleteClient, setConfirmDeleteClient, deletingClient,
+    fetchArchivedClients, handleRestoreClient, handlePermanentDeleteClient,
+
+    archivedFees, archivedFeesTotal, loadingArchivedFees,
+    archivedFeesPage, setArchivedFeesPage,
+    archivedFeesSearch, setArchivedFeesSearch,
+    restoringFeeId, confirmDeleteFee, setConfirmDeleteFee, deletingFee,
+    fetchArchivedFees, handleRestoreFee, handlePermanentDeleteFee,
+  } = archive;
+
+  // ── تبويب الأرشيف النشط (قضايا/موكلين/أتعاب) ──
+  const [archiveTab, setArchiveTab] = useState<ArchiveTabId>('cases');
+
+  // ── Debounce على بحث الأرشيف (400ms) — بيطبّق على تبويب الأرشيف النشط بس ──
+  const [archiveSearchInput, setArchiveSearchInput] = useState('');
+  const archiveSearchDebounceRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const handleArchiveSearchChange = useCallback((val: string) => {
+    setArchiveSearchInput(val);
+    if (archiveSearchDebounceRef.current) clearTimeout(archiveSearchDebounceRef.current);
+    archiveSearchDebounceRef.current = setTimeout(() => {
+      if (archiveTab === 'cases') { setArchivedCasesSearch(val); setArchivedCasesPage(0); }
+      else if (archiveTab === 'clients') { setArchivedClientsSearch(val); setArchivedClientsPage(0); }
+      else { setArchivedFeesSearch(val); setArchivedFeesPage(0); }
+    }, 400);
+  }, [archiveTab, setArchivedCasesSearch, setArchivedCasesPage, setArchivedClientsSearch, setArchivedClientsPage, setArchivedFeesSearch, setArchivedFeesPage]);
+
+  // ── تصفير البحث المحلي وحقل الإدخال لما المستخدم يبدّل تبويب الأرشيف ──
+  const handleArchiveTabChange = useCallback((tab: ArchiveTabId) => {
+    setArchiveTab(tab);
+    setArchiveSearchInput('');
+  }, []);
 
   // ── جلب البيانات عند تغيير القسم ──
   useEffect(() => {
@@ -116,6 +161,23 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
     if (section === 'legal_library') { fetchLaws(); fetchLegalCategories(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section]);
+
+  // ── جلب القضايا المؤرشفة عند فتح قسم الأرشيف أو تغيير البحث/الصفحة ──
+  useEffect(() => {
+    if (section !== 'archive') return;
+    if (archiveTab === 'cases') fetchArchivedCases(archivedCasesPage, archivedCasesSearch);
+    else if (archiveTab === 'clients') fetchArchivedClients(archivedClientsPage, archivedClientsSearch);
+    else fetchArchivedFees(archivedFeesPage, archivedFeesSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, archiveTab, archivedCasesPage, archivedCasesSearch, archivedClientsPage, archivedClientsSearch, archivedFeesPage, archivedFeesSearch]);
+
+  // ── جلب أولي مرة واحدة عند فتح اللوحة (عشان عداد الأرشيف في الكارت يظهر صحيح حتى قبل فتح القسم) ──
+  useEffect(() => {
+    fetchArchivedCases(0, '');
+    fetchArchivedClients(0, '');
+    fetchArchivedFees(0, '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── جلب سجل النشاط عند فتح القسم أو تغيير الفلاتر أو الصفحة ──
   // useEffect واحد بس عشان ما يتنادى مرتين عند فتح القسم لأول مرة
@@ -234,6 +296,18 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
           iconBg:'rgba(34,211,238,0.12)', iconColor:'#22d3ee',
           activeBg:'', activeBorder:'',
           hoverBorder:'rgba(34,211,238,0.25)',
+        },
+        // صف 4: الأرشيف
+        {
+          id:'archive',
+          icon: React.createElement(IconArchive),
+          label:'الأرشيف',
+          desc:'قضايا وموكلين وأتعاب',
+          badge: String(archivedCasesTotal + archivedClientsTotal + archivedFeesTotal),
+          accentBefore:'#818cf8',
+          iconBg:'rgba(129,140,248,0.12)', iconColor:'#818cf8',
+          activeBg:'', activeBorder:'',
+          hoverBorder:'rgba(129,140,248,0.25)',
         },
       ] as NavCardConfig[]).map((t) =>
         React.createElement('button',{
@@ -466,6 +540,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
             backup:  'linear-gradient(90deg,#0891b2,#22d3ee)',
             office:  'linear-gradient(90deg,#d97706,#fbbf24)',
             legal_library: 'linear-gradient(90deg,#0d9488,#2dd4bf)',
+            archive: 'linear-gradient(90deg,#6366f1,#818cf8)',
           } as Record<string, string>)[section as string]||'transparent',
           boxShadow:({
             users:   '0 0 12px rgba(96,165,250,0.5)',
@@ -476,6 +551,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
             backup:  '0 0 12px rgba(34,211,238,0.5)',
             office:  '0 0 12px rgba(251,191,36,0.5)',
             legal_library: '0 0 12px rgba(45,212,191,0.5)',
+            archive: '0 0 12px rgba(129,140,248,0.5)',
           } as Record<string, string>)[section as string]||'none',
         }}),
 
@@ -493,7 +569,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
             ),
             React.createElement('div',null,
               React.createElement('h2',{className:"text-sm font-black text-white"},
-                ({users:'المستخدمون',sessions:'الجلسات',portal:'بوابة الموكل',activity:'سجل النشاط',security:'الأمان',backup:'نسخ احتياطي',office:'إعدادات المكتب',legal_library:'المكتبة القانونية'} as Record<string, string>)[section as string]||''
+                ({users:'المستخدمون',sessions:'الجلسات',portal:'بوابة الموكل',activity:'سجل النشاط',security:'الأمان',backup:'نسخ احتياطي',office:'إعدادات المكتب',legal_library:'المكتبة القانونية',archive:'الأرشيف'} as Record<string, string>)[section as string]||''
               ),
               React.createElement('p',{className:"text-[10px] text-slate-500"},"لوحة الإدارة")
             )
@@ -550,6 +626,29 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
     //  SECTION: المكتبة القانونية
     // ══════════════════════════
     section === 'legal_library' && React.createElement(LegalLibrarySection, { loadingLaws, laws, legalCategories, processingLaw, handleProcessLaw, setEditingLaw, setShowLawModal, setConfirmDeleteLaw }),
+
+    // ══════════════════════════
+    //  SECTION: الأرشيف (المرحلة 4 — قضايا + موكلين + أتعاب)
+    // ══════════════════════════
+    section === 'archive' && React.createElement(ArchiveSection, {
+      archiveSearchInput, handleArchiveSearchChange, ARCHIVE_PAGE_SIZE, clients,
+      archiveTab, setArchiveTab: handleArchiveTabChange,
+
+      archivedCases, archivedCasesTotal, loadingArchivedCases,
+      archivedCasesPage, setArchivedCasesPage,
+      restoringCaseId, handleRestoreCase,
+      confirmDeleteCase, setConfirmDeleteCase, deletingCase, handlePermanentDeleteCase,
+
+      archivedClients, archivedClientsTotal, loadingArchivedClients,
+      archivedClientsPage, setArchivedClientsPage,
+      restoringClientId, handleRestoreClient,
+      confirmDeleteClient, setConfirmDeleteClient, deletingClient, handlePermanentDeleteClient,
+
+      archivedFees, archivedFeesTotal, loadingArchivedFees,
+      archivedFeesPage, setArchivedFeesPage,
+      restoringFeeId, handleRestoreFee,
+      confirmDeleteFee, setConfirmDeleteFee, deletingFee, handlePermanentDeleteFee,
+    }),
 
 
     // مودالز مستقلة (مستخدم/بوابة موكل/كلمة مرور/مكتبة قانونية/حذف قانون/حذف مستخدم)
