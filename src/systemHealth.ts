@@ -33,6 +33,11 @@ export interface ServiceStatus {
   lastSuccess: string | null;   // ISO timestamp
   lastError: string | null;     // ISO timestamp
   errorMsg: string | null;      // رسالة الخطأ بلغة المستخدم
+  // ⚡ [جديد] نص الخطأ التقني الخام من Supabase/Postgres، لو موجود —
+  // بيتعرض كتفصيلة صغيرة تحت الرسالة الودودة في بانر الداشبورد، عشان
+  // لو المشكلة اتكررت نقدر نشخّصها من غير ما نحتاج نوصل للوجز/الترمينال
+  // (الشغل كله من الموبايل من غير أي وصول لطرفية).
+  rawError: string | null;
 }
 
 // ─── إيفنت التحديث الفوري ────────────────────────────────────────────────
@@ -111,6 +116,7 @@ function loadAll(): Record<string, ServiceStatus> {
       lastSuccess: null,
       lastError: null,
       errorMsg: null,
+      rawError: null,
     };
   });
   return defaults;
@@ -135,6 +141,7 @@ export function recordSuccess(key: ServiceKey, label?: string) {
     status: 'ok',
     lastSuccess: new Date().toISOString(),
     errorMsg: null,
+    rawError: null,
   };
   saveAll(all);
   broadcastHealthChange();
@@ -155,6 +162,7 @@ export function recordError(key: ServiceKey, rawError?: string, opts?: { label?:
     status: 'error',
     lastError: new Date().toISOString(),
     errorMsg: friendlyError(key, rawError, opts?.message),
+    rawError: rawError || null,
   };
   saveAll(all);
   broadcastHealthChange();
