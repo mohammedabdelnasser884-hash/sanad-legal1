@@ -69,13 +69,13 @@ function NewClientModal({onClose,onSave,loading}: NewClientModalProps){
                 // بيانات أساسية
                 React.createElement(Inp,{label:"الاسم الكامل",value:form.full_name,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('full_name',e.target.value),placeholder:"مثال: محمد أحمد علي",required:true,'data-testid':'new-client-name'}),
                 React.createElement('div',{className:"grid grid-cols-2 gap-3"},
-                    React.createElement(Sel,{label:"نوع الموكل",value:form.type,onChange:(e: React.ChangeEvent<HTMLSelectElement>) =>s('type',e.target.value),options:[
+                    React.createElement(Sel,{label:"نوع الموكل",required:true,value:form.type,onChange:(e: React.ChangeEvent<HTMLSelectElement>) =>s('type',e.target.value),options:[
                         {value:'individual',label:'فرد'},
                         {value:'company',label:'شركة'},
                         {value:'government',label:'جهة حكومية'}
                     ]}),
                     React.createElement('div',null,
-                        React.createElement(Inp,{label:"رقم الهاتف",value:form.phone,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('phone',e.target.value),placeholder:"05xxxxxxxx"}),
+                        React.createElement(Inp,{label:"رقم الهاتف",value:form.phone,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('phone',e.target.value),placeholder:"05xxxxxxxx",required:true,'data-testid':'new-client-phone'}),
                         React.createElement(WarnHint,{msg:phoneWarn})
                     )
                 ),
@@ -143,7 +143,9 @@ function NewClientModal({onClose,onSave,loading}: NewClientModalProps){
                     disabled:loading,
                     'data-testid':'save-client-button',
                     onClick:()=>{
-                        if(!form.full_name){toast('يرجى إدخال اسم الموكل',true);return;}
+                        if(!form.full_name.trim()){toast('يرجى إدخال اسم الموكل',true);return;}
+                        if(!form.phone.trim()){toast('يرجى إدخال رقم الهاتف',true);return;}
+                        if(!form.type){toast('يرجى اختيار نوع الموكل',true);return;}
                         const warnings = [phoneWarn, phoneWarn2, emailWarn].filter(Boolean);
                         if(warnings.length>0) toast('⚠️ تنبيه: '+warnings[0]+' — تم الحفظ رغم ذلك');
                         onSave(form,idFile,poaFile);
