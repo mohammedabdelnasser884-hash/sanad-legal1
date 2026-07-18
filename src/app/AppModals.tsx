@@ -13,7 +13,6 @@ import UserFormModal from '@/features/admin/users/UserFormModal';
 import ClientDetailModal from '../features/clients/ClientDetailModal';
 import UniversalSearchModal from '../shared/modals/UniversalSearchModal';
 import AILegalAssistant from '../features/ai/AILegalAssistant';
-import SettingsPage from '../pages/Settings/SettingsPage';
 import DeleteConfirmModal from '@/shared/modals/DeleteConfirmModal';
 import NewStandaloneSessionModal from '../features/calendar/NewStandaloneSessionModal';
 import CaseDetailView from '../features/cases/CaseDetailView';
@@ -32,7 +31,6 @@ interface AppModalsProps {
     // ── حالات إظهار المودالات ──
     showSearch: boolean;
     showAI: boolean;
-    showSettings: boolean;
     showCaseModal: boolean;
     showNewSessionModal: boolean;
     showLawyerModal: boolean;
@@ -48,12 +46,10 @@ interface AppModalsProps {
     // ── setters ──
     setShowSearch: (v: boolean) => void;
     setShowAI: (v: boolean) => void;
-    setShowSettings: (v: boolean) => void;
     setShowCaseModal: (v: boolean) => void;
     setShowNewSessionModal: (v: boolean) => void;
     setShowLawyerModal: (v: boolean) => void;
     setShowClientModal: (v: boolean) => void;
-    setCountry: (c: string) => void;
     setTab: (tab: TabName) => void;
     setSelectedCase: (caseOrUpdater: React.SetStateAction<MappedCase | null>, initialTab?: string) => void;
     setSelectedClient: (clientOrNull: MappedClient | null) => void;
@@ -91,11 +87,11 @@ interface AppModalsProps {
 // ─────────────────────────────────────────────────────────
 function AppModals({
     cases, clients, lawyers, profile, country, isAdmin, casesFilter, nav,
-    showSearch, showAI, showSettings, showCaseModal, showNewSessionModal,
+    showSearch, showAI, showCaseModal, showNewSessionModal,
     showLawyerModal, showClientModal, savingCase, savingLawyer, savingClient,
     deleteConfirm, selectedClient, selectedCase, selectedCaseInitialTab,
-    setShowSearch, setShowAI, setShowSettings, setShowCaseModal, setShowNewSessionModal,
-    setShowLawyerModal, setShowClientModal, setCountry, setTab,
+    setShowSearch, setShowAI, setShowCaseModal, setShowNewSessionModal,
+    setShowLawyerModal, setShowClientModal, setTab,
     setSelectedCase, setSelectedClient, _setDeleteConfirm, _setSelectedClient, _setSelectedCase,
     setCases, setCasesFilter, setCasesPage,
     fetchCases, fetchTodaySessions, fetchUpcomingSessions,
@@ -118,7 +114,6 @@ function AppModals({
             onOpenClient: (c) => { setSelectedClient(c as MappedClient); setTab('clients'); }
         }),
         showAI && createPortal(React.createElement(AILegalAssistant, { onClose: () => setShowAI(false), cases, clients, profile, country }), document.body),
-        showSettings && createPortal(React.createElement(SettingsPage, { profile, isAdmin, country, onCountryChange: (c: string) => { setCountry(c); }, onClose: () => setShowSettings(false) }), document.body),
         deleteConfirm && nav.isOpen('delete') && createPortal(React.createElement(DeleteConfirmModal, {
             title: deleteConfirm.title, itemName: deleteConfirm.name, itemType: deleteConfirm.itemType,
             mode: deleteConfirm.mode || 'delete',
