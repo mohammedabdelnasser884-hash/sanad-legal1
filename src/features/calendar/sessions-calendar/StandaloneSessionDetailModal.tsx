@@ -193,16 +193,20 @@ interface LinkSessionModalProps {
     // فعليًا في الداتابيز — ولو المستخدم دوس "🗑 حذف" من هنا هيحذف جلسة
     // بقت جزء من قضية حقيقية من غير ما ياخد باله.
     onFullClose: () => void;
+    // ⚡ [جديد] بينادى بس لما موكل جديد فعليًا يتضاف (مش أي إجراء ربط
+    // عادي) — عشان قائمة الموكلين في التطبيق كله تتحدّث فورًا، بدل ما
+    // الموكل الجديد يفضل مخفي لحد ما المستخدم يدخل تاب الموكلين يدويًا.
+    onClientAdded?: () => void;
 }
 
-function LinkSessionModal({ session, db, onClose, onDone, onFullClose }: LinkSessionModalProps) {
+function LinkSessionModal({ session, db, onClose, onDone, onFullClose, onClientAdded }: LinkSessionModalProps) {
     const {
         linkingCase, linkingClient, linkingToCase, linkingExisting,
         clientStep, setClientStep, foundClient,
         clientSearch, searchResults, searching, selectedExistingClient, setSelectedExistingClient,
         handleLinkCase, handleLinkExistingClient, handleAddAndLinkClient, handleAddClientOnly,
         searchExistingClients, confirmLinkToExistingClient,
-    } = useSessionLinking(session, db, onDone);
+    } = useSessionLinking(session, db, onDone, onClientAdded);
 
     const hasPlaintiff = !!session.plaintiff?.trim();
 
@@ -374,9 +378,10 @@ interface StandaloneSessionDetailModalProps {
     onClose: () => void;
     onDone: () => void;
     onNotify?: (msg: string) => void;
+    onClientAdded?: () => void;
 }
 
-function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify }: StandaloneSessionDetailModalProps) {
+function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify, onClientAdded }: StandaloneSessionDetailModalProps) {
     const [showUpdate, setShowUpdate] = useState(false);
     const [showEdit, setShowEdit] = useState(false);
     const [showLink, setShowLink] = useState(false);
@@ -530,7 +535,8 @@ function StandaloneSessionDetailModal({ session, db, onClose, onDone, onNotify }
             session, db,
             onClose: () => setShowLink(false),
             onDone,
-            onFullClose: () => { setShowLink(false); onDone(); onClose(); }
+            onFullClose: () => { setShowLink(false); onDone(); onClose(); },
+            onClientAdded,
         })
     );
 }
