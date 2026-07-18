@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>بوابة إدارة المكاتب — سَنَد</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<script>
+  window.tailwind = window.tailwind || {};
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          'premium-bg':   '#070d1a',
+          'premium-card': '#0c1426',
+          'premium-gold': '#c8a84b',
+        },
+        fontFamily: { sans: ['Cairo','sans-serif'] }
+      }
+    }
+  }
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { font-family: 'Cairo', sans-serif; }
+  body { background: #070d1a; color: #f1f5f9; direction: rtl; text-align: right; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #070d1a; }
+  ::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 4px; }
+  input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(200,168,75,0.25); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes ping { 0%,100%{opacity:1} 50%{opacity:.5} }
+  .fade-in { animation: fadeIn 0.35s ease-out forwards; }
+  .spinner { animation: spin 0.8s linear infinite; }
+  .ping { animation: ping 1.5s ease-in-out infinite; }
+  .no-scroll { overflow: hidden; }
+  .slide-enter { animation: fadeIn 0.3s ease-out forwards; }
+  select option { background: #0c1426; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  شاشة تسجيل الدخول                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <!-- شعار -->
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#C9A84C]/20">
+        <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+        </svg>
+      </div>
+      <h1 class="text-lg font-black text-white">بوابة إدارة المكاتب</h1>
+      <p class="text-[11px] text-slate-500 font-bold mt-1">سَنَد — Super Admin</p>
+    </div>
+
+    <!-- كارت الدخول -->
+    <div class="bg-premium-card border border-white/5 rounded-3xl p-6 shadow-2xl">
+      <div class="space-y-4">
+        <div>
+          <label class="text-[11px] font-black text-slate-400 block mb-1.5">كلمة المرور</label>
+          <input id="login-pass" type="password" placeholder="أدخل كلمة المرور"
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 font-bold"
+            onkeydown="if(event.key==='Enter') doLogin()"/>
+        </div>
+        <div id="login-err" class="hidden text-[11px] text-rose-400 font-bold text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2"></div>
+        <button id="login-btn" onclick="doLogin()"
+          class="w-full py-3 bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] text-white rounded-xl font-black text-sm active:scale-95 transition-transform shadow-lg disabled:opacity-60">
+          دخول
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  التطبيق الرئيسي                                      -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="app" class="hidden min-h-screen flex flex-col">
+
+  <!-- هيدر -->
+  <header class="shrink-0 bg-premium-card border-b border-white/5 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] flex items-center justify-center shadow-md">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-sm font-black text-white">بوابة إدارة المكاتب</h1>
+        <p class="text-[10px] text-[#C9A84C] font-bold">سَنَد</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- تاب المكاتب -->
+      <button onclick="switchTab('offices')" id="tab-offices"
+        class="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border border-transparent">
+        🏢 المكاتب
+      </button>
+      <!-- تاب الباقات -->
+      <button onclick="switchTab('plans')" id="tab-plans"
+        class="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border border-transparent">
+        💳 الباقات
+      </button>
+      <!-- تاب المدفوعات -->
+      <button onclick="switchTab('payments')" id="tab-payments"
+        class="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border border-transparent">
+        💰 المدفوعات
+      </button>
+      <!-- خروج -->
+      <button onclick="doLogout()"
+        class="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 active:scale-95 transition-transform">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ════ تاب المكاتب ════ -->
+  <div id="page-offices" class="flex-1 p-4 space-y-4 fade-in">
+
+    <!-- إحصائيات سريعة -->
+    <div id="stats-grid" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <!-- تتعبى ديناميكياً -->
+    </div>
+
+    <!-- تنبيهات الاشتراك -->
+    <div id="alerts-section" class="hidden space-y-2"></div>
+
+    <!-- شريط البحث + زرار إضافة -->
+    <div class="flex gap-2 items-center">
+      <div class="relative flex-1">
+        <svg class="w-4 h-4 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+        </svg>
+        <input id="search-input" type="text" placeholder="بحث باسم المكتب..." oninput="renderTable()"
+          class="w-full bg-premium-card border border-white/5 rounded-xl pr-9 pl-3 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+      </div>
+      <select id="filter-status" onchange="renderTable()"
+        class="bg-premium-card border border-white/5 rounded-xl px-3 py-2.5 text-xs text-slate-300 font-bold">
+        <option value="all">كل الحالات</option>
+        <option value="active">نشط</option>
+        <option value="suspended">موقوف</option>
+        <option value="trial">تجريبي</option>
+        <option value="expiring_soon">⏳ هينتهي خلال 30 يوم</option>
+      </select>
+      <button onclick="openAddModal()"
+        class="flex items-center gap-1.5 bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] text-white px-4 py-2.5 rounded-xl text-xs font-black active:scale-95 transition-transform shadow-md whitespace-nowrap">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        مكتب جديد
+      </button>
+    </div>
+
+    <!-- جدول المكاتب -->
+    <div class="bg-premium-card border border-white/5 rounded-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+        <span class="text-xs font-black text-white">سجل المكاتب المشتركة</span>
+        <button onclick="loadTenants()" class="text-[10px] text-slate-400 flex items-center gap-1 hover:text-white transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+          تحديث
+        </button>
+      </div>
+      <div id="table-loading" class="p-8 text-center text-slate-500 text-xs font-bold">
+        <div class="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full spinner mx-auto mb-2"></div>
+        جاري التحميل...
+      </div>
+      <div id="table-empty" class="hidden p-8 text-center text-slate-600 text-xs font-bold">لا توجد مكاتب مسجلة</div>
+      <div id="table-wrap" class="hidden overflow-x-auto">
+        <table class="w-full text-right text-xs">
+          <thead class="bg-[#070d1a]/50 text-slate-500 font-black text-[10px] border-b border-white/5">
+            <tr>
+              <th class="py-3 px-4">المكتب</th>
+              <th class="py-3 px-4">التواصل</th>
+              <th class="py-3 px-4">الباقة</th>
+              <th class="py-3 px-4 text-center">الاشتراك</th>
+              <th class="py-3 px-4 text-center">الحالة</th>
+              <th class="py-3 px-4 text-center">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tenants-tbody" class="divide-y divide-white/5 text-slate-300 font-semibold"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ تاب الباقات ════ -->
+  <div id="page-plans" class="hidden flex-1 p-4 space-y-4 fade-in">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="plans-grid">
+      <!-- تتعبى ديناميكياً -->
+    </div>
+  </div>
+
+  <!-- ════ تاب المدفوعات ════ -->
+  <div id="page-payments" class="hidden flex-1 p-4 space-y-4 fade-in">
+    <div class="bg-premium-card border border-white/5 rounded-2xl p-10 text-center">
+      <div class="text-4xl mb-3">🚧</div>
+      <p class="text-sm font-black text-white mb-1">المدفوعات قريبًا</p>
+      <p class="text-[11px] text-slate-500 font-bold leading-relaxed">
+        هنفعّل المتابعة المالية لما يتم ربط نظام الفوترة (Stripe).<br/>
+        لحد وقتها، بيانات المكاتب والباقات شغالة عادي من تاب "المكاتب".
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  مودال إضافة / تعديل مكتب                             -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="office-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-premium-card border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden slide-enter">
+    <!-- هيدر المودال -->
+    <div class="bg-[#070d1a] px-5 py-4 border-b border-white/5 flex items-center justify-between">
+      <div>
+        <h3 id="modal-title" class="text-sm font-black text-white">إضافة مكتب جديد</h3>
+        <p class="text-[10px] text-slate-500 font-bold mt-0.5">بيانات الاشتراك في سَنَد</p>
+      </div>
+      <button onclick="closeModal()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 active:scale-95 transition-transform">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <!-- محتوى المودال -->
+    <div class="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
+      <input type="hidden" id="modal-id"/>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="text-[10px] font-black text-slate-400 block mb-1">اسم المكتب *</label>
+          <input id="f-name" type="text" placeholder="مثال: مكتب أحمد للمحاماة"
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+        </div>
+        <div class="col-span-2 grid grid-cols-2 gap-3" id="create-only-fields">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 block mb-1">البريد الإلكتروني *</label>
+            <input id="f-email" type="email" placeholder="office@example.com"
+              class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 block mb-1">اسم المسؤول الأول</label>
+            <input id="f-admin-name" type="text" placeholder="مثال: أحمد محمد"
+              class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+          </div>
+          <div class="col-span-2" id="tenant-only-note">
+            <p class="text-[10px] text-slate-500 font-bold">البريد الإلكتروني هيبقى هو إيميل تسجيل الدخول لأول حساب أدمن في المكتب ده.</p>
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">رقم الهاتف</label>
+          <input id="f-phone" type="text" placeholder="+966..."
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">الباقة</label>
+          <select id="f-plan" class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold">
+            <option value="free">مجانية ($0)</option>
+            <option value="individual">مستقل ($5/شهر)</option>
+            <option value="small_firm">مكاتب ($10/شهر)</option>
+            <option value="enterprise">مؤسسات ($20/شهر)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">الحالة</label>
+          <select id="f-status" class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold">
+            <option value="active">نشط</option>
+            <option value="trial">تجريبي</option>
+            <option value="suspended">موقوف</option>
+          </select>
+        </div>
+        <div class="col-span-2">
+          <label class="text-[10px] font-black text-slate-400 block mb-1">تاريخ انتهاء الفترة التجريبية (اختياري)</label>
+          <input id="f-expires" type="date"
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold"/>
+        </div>
+        <div class="col-span-2">
+          <label class="text-[10px] font-black text-slate-400 block mb-1">ملاحظات</label>
+          <textarea id="f-notes" rows="2" placeholder="أي ملاحظات إضافية..."
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold resize-none"></textarea>
+        </div>
+      </div>
+
+      <div id="modal-err" class="hidden text-[11px] text-rose-400 font-bold text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2"></div>
+    </div>
+    <!-- فوتر المودال -->
+    <div class="bg-[#070d1a] px-5 py-4 border-t border-white/5 flex gap-2">
+      <button onclick="saveTenant()" id="modal-save-btn"
+        class="flex-1 py-2.5 bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] text-white rounded-xl font-black text-xs active:scale-95 transition-transform flex items-center justify-center gap-2">
+        حفظ
+      </button>
+      <button onclick="closeModal()"
+        class="px-4 py-2.5 bg-white/5 border border-white/5 text-slate-300 rounded-xl font-black text-xs active:scale-95 transition-transform">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  مودال تأكيد الحذف                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="delete-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-premium-card border border-rose-500/20 rounded-3xl w-full max-w-sm overflow-hidden slide-enter p-6 text-center space-y-4">
+    <div class="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto">
+      <svg class="w-6 h-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+      </svg>
+    </div>
+    <div>
+      <h3 class="text-sm font-black text-white">حذف المكتب</h3>
+      <p id="delete-msg" class="text-[11px] text-slate-400 font-bold mt-1"></p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="confirmDelete()"
+        class="flex-1 py-2.5 bg-rose-500 text-white rounded-xl font-black text-xs active:scale-95 transition-transform">
+        حذف
+      </button>
+      <button onclick="closeDeleteModal()"
+        class="flex-1 py-2.5 bg-white/5 border border-white/5 text-slate-300 rounded-xl font-black text-xs active:scale-95 transition-transform">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  مودال تسجيل دفعة                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="pay-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-premium-card border border-white/10 rounded-3xl w-full max-w-md overflow-hidden slide-enter">
+    <div class="bg-[#070d1a] px-5 py-4 border-b border-white/5 flex items-center justify-between">
+      <div>
+        <h3 class="text-sm font-black text-white">تسجيل دفعة جديدة</h3>
+        <p class="text-[10px] text-slate-500 font-bold mt-0.5">معطّل حاليًا (قريبًا)</p>
+      </div>
+      <button onclick="closePayModal()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-slate-400 active:scale-95 transition-transform">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-5 space-y-4">
+      <div>
+        <label class="text-[10px] font-black text-slate-400 block mb-1">المكتب *</label>
+        <select id="pf-tenant" class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold">
+          <option value="">اختر المكتب...</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">المبلغ (USD) *</label>
+          <input id="pf-amount" type="number" step="0.01" min="0" placeholder="10.00"
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">تاريخ الدفع *</label>
+          <input id="pf-date" type="date"
+            class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold"/>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">الباقة</label>
+          <select id="pf-plan" class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold">
+            <option value="free">مجانية</option>
+            <option value="individual">مستقل ($5)</option>
+            <option value="small_firm">مكاتب ($10)</option>
+            <option value="enterprise">مؤسسات ($20)</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 block mb-1">طريقة الدفع</label>
+          <select id="pf-method" class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white font-bold">
+            <option value="cash">كاش</option>
+            <option value="bank_transfer">تحويل بنكي</option>
+            <option value="card">بطاقة</option>
+            <option value="other">أخرى</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="text-[10px] font-black text-slate-400 block mb-1">ملاحظات</label>
+        <input id="pf-notes" type="text" placeholder="مثال: دفع شهر يونيو..."
+          class="w-full bg-[#070d1a] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-600 font-bold"/>
+      </div>
+      <div id="pay-modal-err" class="hidden text-[11px] text-rose-400 font-bold text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2"></div>
+    </div>
+    <div class="bg-[#070d1a] px-5 py-4 border-t border-white/5 flex gap-2">
+      <button onclick="savePayment()" id="pay-save-btn"
+        class="flex-1 py-2.5 bg-gradient-to-tr from-[#8B6914] to-[#C9A84C] text-white rounded-xl font-black text-xs active:scale-95 transition-transform flex items-center justify-center gap-2">
+        حفظ الدفعة
+      </button>
+      <button onclick="closePayModal()"
+        class="px-4 py-2.5 bg-white/5 border border-white/5 text-slate-300 rounded-xl font-black text-xs active:scale-95 transition-transform">
+        إلغاء
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[99] px-4 py-2.5 rounded-2xl text-xs font-black text-white shadow-xl min-w-[200px] text-center transition-all"></div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  JavaScript                                           -->
+<!-- ══════════════════════════════════════════════════════ -->
+<script>
+// ─── Config ─────────────────────────────────────────────────────────────
+// ⚙️  لو غيّرت الـ Supabase project، غيّر SUPABASE_PROJECT_REF بس هنا
+// ─────────────────────────────────────────────────────────────────────────
+const SUPABASE_PROJECT_REF = 'lrdshyohvymbdanoxgyy'; // ← غيّر هنا فقط
+const FN_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/saas-admin`;
+// ─────────────────────────────────────────────────────────────────────────
+const TABLE       = 'tenants';
+
+// ─── أمان: تهريب أي نص قبل إدراجه في innerHTML ───────────
+// بيانات المكاتب (الاسم، الملاحظات...) بتيجي من القاعدة وممكن
+// تحتوي حروف HTML؛ من غير التهريب ده، اسم مكتب فيه <script> أو
+// onerror= ممكن ينفّذ كود في متصفح السوبر أدمن نفسه (stored XSS).
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// ─── State ────────────────────────────────────────────
+let allTenants    = [];
+let deleteTargetId = null;
+let currentTab    = 'offices';
+
+// ─── الاتصال بالـ Edge Function (بديل sbFetch القديمة) ──
+async function sbFetch(path, method='GET', body=null) {
+  const token = sessionStorage.getItem('saas_token');
+  const r = await fetch(FN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'query', token, path, method, body }),
+  });
+  const data = await r.json().catch(()=>({}));
+  if (r.status === 401) {
+    // الجلسة منتهية أو التوكن غير صالح — رجّعه لشاشة الدخول
+    doLogout();
+    throw new Error(data.error || 'الجلسة منتهية، سجّل الدخول من جديد');
+  }
+  if (!r.ok) {
+    throw new Error(data.error || data.message || r.status);
+  }
+  return data;
+}
+
+// ─── Auth ─────────────────────────────────────────────
+async function doLogin() {
+  const v = document.getElementById('login-pass').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-err');
+  err.classList.add('hidden');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'login', password: v }),
+    });
+    const data = await r.json().catch(()=>({}));
+    if (!r.ok || !data.token) {
+      err.textContent = data.error || 'كلمة المرور غير صحيحة';
+      err.classList.remove('hidden');
+      setTimeout(()=>err.classList.add('hidden'), 3000);
+      return;
+    }
+    sessionStorage.setItem('saas_auth','1');
+    sessionStorage.setItem('saas_token', data.token);
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    switchTab('offices');
+    loadTenants();
+  } catch (e) {
+    err.textContent = 'تعذّر الاتصال بالسيرفر';
+    err.classList.remove('hidden');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem('saas_auth');
+  sessionStorage.removeItem('saas_token');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-pass').value = '';
+}
+
+// ─── Tabs ─────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  ['offices','plans','payments'].forEach(t => {
+    const pg  = document.getElementById('page-'+t);
+    const btn = document.getElementById('tab-'+t);
+    if (!pg || !btn) return;
+    if (t === tab) {
+      pg.classList.remove('hidden');
+      btn.className = 'px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border bg-[#C9A84C]/15 text-[#C9A84C] border-[#C9A84C]/30';
+    } else {
+      pg.classList.add('hidden');
+      btn.className = 'px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border border-transparent text-slate-400';
+    }
+  });
+  if (tab === 'plans')    renderPlans();
+}
+
+// ─── Load Tenants ─────────────────────────────────────
+async function loadTenants() {
+  showTableLoading(true);
+  try {
+    const data = await sbFetch(TABLE + '?order=created_at.desc');
+    allTenants = data || [];
+    renderTable();
+    renderStats();
+    renderAlerts();
+  } catch(e) {
+    showToast('خطأ في التحميل: ' + e.message, true);
+    showTableLoading(false, true);
+  }
+}
+
+function showTableLoading(on, empty=false) {
+  document.getElementById('table-loading').classList.toggle('hidden', !on);
+  document.getElementById('table-empty').classList.toggle('hidden', !empty);
+  document.getElementById('table-wrap').classList.toggle('hidden', on || empty);
+}
+
+// ─── Render Alerts ────────────────────────────────────
+function renderAlerts() {
+  const today     = new Date();
+  today.setHours(0,0,0,0);
+  const in10Days  = new Date(today); in10Days.setDate(today.getDate() + 10);
+  const grace14   = new Date(today); grace14.setDate(today.getDate() - 14);
+
+  // مكاتب منتهية (expires_at < اليوم) وحالتها active أو trial
+  const expired = allTenants.filter(t => {
+    if (!t.trial_ends_at) return false;
+    const exp = new Date(t.trial_ends_at); exp.setHours(0,0,0,0);
+    return exp < today && (t.status === 'active' || t.status === 'trial');
+  });
+
+  // مكاتب هتنتهي خلال 10 أيام
+  const expiringSoon = allTenants.filter(t => {
+    if (!t.trial_ends_at) return false;
+    const exp = new Date(t.trial_ends_at); exp.setHours(0,0,0,0);
+    return exp >= today && exp <= in10Days && t.status === 'active';
+  });
+
+  const section = document.getElementById('alerts-section');
+
+  if (!expired.length && !expiringSoon.length) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+
+  let html = '';
+
+  // ── تنبيهات المنتهية ──
+  if (expired.length) {
+    html += `
+      <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:16px;padding:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:28px;height:28px;border-radius:10px;background:rgba(239,68,68,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg style="width:14px;height:14px;color:#f87171" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+            </svg>
+          </div>
+          <div>
+            <p style="font-size:11px;font-weight:900;color:#f87171">${expired.length} مكتب انتهى اشتراكه ولم يجدد</p>
+            <p style="font-size:10px;color:#64748b;font-weight:700">Grace Period: 14 يوم — يمكنهم مشاهدة البيانات فقط</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${expired.map(t => {
+            const exp     = new Date(t.trial_ends_at);
+            const daysDiff = Math.floor((today - exp) / (1000*60*60*24));
+            const inGrace  = daysDiff <= 14;
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);border-radius:12px;padding:8px 12px">
+                <div>
+                  <p style="font-size:11px;font-weight:900;color:white">${esc(t.name)}</p>
+                    ${inGrace
+                      ? `<span style="color:#fb923c"> — باقي ${14 - daysDiff} يوم من الـ Grace Period</span>`
+                      : `<span style="color:#f87171"> — تجاوز الـ Grace Period</span>`}
+                  </p>
+                </div>
+                <button onclick="openEditModal('${t.id}')"
+                  style="font-size:10px;font-weight:900;color:#f87171;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap">
+                  تجديد ↗
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ── تنبيهات القريبة من الانتهاء ──
+  if (expiringSoon.length) {
+    html += `
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:28px;height:28px;border-radius:10px;background:rgba(245,158,11,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg style="width:14px;height:14px;color:#fbbf24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+            </svg>
+          </div>
+          <div>
+            <p style="font-size:11px;font-weight:900;color:#fbbf24">${expiringSoon.length} مكتب اشتراكه هينتهي خلال 10 أيام</p>
+            <p style="font-size:10px;color:#64748b;font-weight:700">الوقت المناسب لإرسال تذكير تجديد</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${expiringSoon.map(t => {
+            const exp      = new Date(t.trial_ends_at);
+            const daysLeft = Math.ceil((exp - today) / (1000*60*60*24));
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);border-radius:12px;padding:8px 12px">
+                <div>
+                  <p style="font-size:11px;font-weight:900;color:white">${esc(t.name)}</p>
+                    <span style="color:#fbbf24"> — باقي ${daysLeft} ${daysLeft===1?'يوم':'أيام'}</span>
+                  </p>
+                </div>
+                <button onclick="openEditModal('${t.id}')"
+                  style="font-size:10px;font-weight:900;color:#fbbf24;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap">
+                  تمديد ↗
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  section.innerHTML = html;
+}
+
+// ─── Render Stats ─────────────────────────────────────
+function renderStats() {
+  const active    = allTenants.filter(t=>t.status==='active').length;
+  const trial     = allTenants.filter(t=>t.status==='trial').length;
+  const suspended = allTenants.filter(t=>t.status==='suspended').length;
+
+  const planPrice = { free:0, individual:5, small_firm:10, enterprise:20 };
+  const mrr = allTenants.filter(t=>t.status==='active').reduce((s,t)=>s+(planPrice[t.subscription_plan]||0),0);
+
+  const stats = [
+    { label:'إجمالي المكاتب', value: allTenants.length, icon:'🏢', color:'text-[#C9A84C]', bg:'rgba(200,168,75,0.08)', border:'rgba(200,168,75,0.2)' },
+    { label:'نشط',            value: active,             icon:'⚡', color:'text-emerald-400', bg:'rgba(74,222,128,0.06)', border:'rgba(74,222,128,0.2)' },
+    { label:'تجريبي',         value: trial,              icon:'🔬', color:'text-blue-400',    bg:'rgba(96,165,250,0.06)', border:'rgba(96,165,250,0.2)' },
+    { label:'MRR (USD)',       value: '$'+mrr,            icon:'💰', color:'text-purple-400',  bg:'rgba(167,139,250,0.06)', border:'rgba(167,139,250,0.2)' },
+  ];
+
+  document.getElementById('stats-grid').innerHTML = stats.map(s => `
+    <div style="background:${s.bg};border:1px solid ${s.border};border-radius:16px;padding:14px;position:relative;overflow:hidden">
+      <div style="position:absolute;top:0;right:0;left:0;height:2px;background:${s.color.replace('text-','')};opacity:0.6" class="${s.color.includes('C9A84C')?'':'hidden'}"></div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] text-slate-500 font-black">${s.label}</span>
+        <span class="text-base">${s.icon}</span>
+      </div>
+      <p class="text-2xl font-black ${s.color}">${s.value}</p>
+    </div>
+  `).join('');
+}
+
+// ─── Render Table ─────────────────────────────────────
+function renderTable() {
+  const q  = (document.getElementById('search-input')?.value||'').toLowerCase();
+  const st = document.getElementById('filter-status')?.value || 'all';
+
+  const today30 = new Date(); today30.setDate(today30.getDate() + 30); today30.setHours(23,59,59,999);
+  const todayNow = new Date(); todayNow.setHours(0,0,0,0);
+
+  const filtered = allTenants.filter(t => {
+    const matchQ  = !q || t.name.toLowerCase().includes(q);
+    let matchSt;
+    if (st === 'expiring_soon') {
+      if (!t.trial_ends_at) { matchSt = false; }
+      else {
+        const exp = new Date(t.trial_ends_at); exp.setHours(0,0,0,0);
+        matchSt = exp >= todayNow && exp <= today30 && t.status !== 'suspended';
+      }
+    } else {
+      matchSt = st==='all' || t.status===st;
+    }
+    return matchQ && matchSt;
+  });
+
+  if (!filtered.length) { showTableLoading(false, true); return; }
+  showTableLoading(false);
+
+  const planLabel = { free:'مجانية', individual:'مستقل', small_firm:'مكاتب', enterprise:'مؤسسات' };
+  const statusBadge = {
+    active:    `<span class="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[9px] font-black rounded-full flex items-center gap-1 w-fit"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full ping inline-block"></span>نشط</span>`,
+    trial:     `<span class="px-2 py-0.5 bg-blue-500/10 border border-blue-500/25 text-blue-400 text-[9px] font-black rounded-full">تجريبي</span>`,
+    suspended: `<span class="px-2 py-0.5 bg-rose-500/10 border border-rose-500/25 text-rose-400 text-[9px] font-black rounded-full">موقوف</span>`,
+  };
+  const planColor = { free:'text-slate-400', individual:'text-[#C9A84C]', small_firm:'text-blue-400', enterprise:'text-purple-400' };
+
+  document.getElementById('tenants-tbody').innerHTML = filtered.map(t => `
+    <tr class="hover:bg-white/[0.015] transition-colors">
+      <td class="py-3 px-4">
+        <p class="text-xs font-black text-white">${esc(t.name)}</p>
+        <div id="note-display-${t.id}" onclick="startEditNote('${t.id}')" title="اضغط لتعديل الملاحظة"
+          style="margin-top:4px;cursor:pointer;min-height:16px;display:flex;align-items:center;gap:4px;group">
+          ${t.notes
+            ? `<span style="font-size:10px;color:#94a3b8;font-weight:700">${esc(t.notes)}</span>`
+            : `<span style="font-size:10px;color:#334155;font-weight:700;font-style:italic">+ ملاحظة سريعة</span>`
+          }
+          <svg style="width:10px;height:10px;color:#475569;flex-shrink:0;opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/>
+          </svg>
+        </div>
+        <div id="note-edit-${t.id}" style="display:none;margin-top:4px">
+          <input id="note-input-${t.id}" type="text" value="${esc(t.notes||'')}"
+            placeholder="اكتب ملاحظة..."
+            onblur="saveNote('${t.id}')"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();saveNote('${t.id}')} if(event.key==='Escape'){cancelEditNote('${t.id}')}"
+            style="width:100%;background:#070d1a;border:1px solid rgba(200,168,75,0.3);border-radius:8px;padding:3px 8px;font-size:10px;color:white;font-weight:700;font-family:Cairo,sans-serif;outline:none"/>
+        </div>
+      </td>
+      <td class="py-3 px-4">
+        <p class="text-[11px] text-slate-300 font-bold">${t.phone||'—'}</p>
+        <div class="flex items-center gap-1.5 mt-1.5">
+          ${t.phone ? `
+            <a href="https://wa.me/${t.phone.replace(/[^0-9]/g,'')}" target="_blank" title="واتساب"
+              style="display:inline-flex;align-items:center;gap:4px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.25);border-radius:7px;padding:3px 8px;text-decoration:none;cursor:pointer">
+              <svg style="width:11px;height:11px;color:#25d366;flex-shrink:0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.121.553 4.112 1.52 5.842L.057 23.7a.75.75 0 0 0 .916.916l5.857-1.463A11.95 11.95 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.712 9.712 0 0 1-4.95-1.353l-.355-.211-3.677.918.934-3.591-.232-.37A9.712 9.712 0 0 1 2.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/>
+              </svg>
+              <span style="font-size:9px;font-weight:900;color:#25d366">واتساب</span>
+            </a>
+          ` : ''}
+        </div>
+      </td>
+      <td class="py-3 px-4">
+        <span class="text-[11px] font-black ${planColor[t.subscription_plan]||'text-slate-400'}">${planLabel[t.subscription_plan]||t.subscription_plan}</span>
+      </td>
+      <td class="py-3 px-4 text-center">
+        <div class="text-[10px] text-slate-400 font-bold space-y-0.5">
+          <div>${t.created_at ? '▶ '+t.created_at.slice(0,10) : '—'}</div>
+          ${(() => {
+            if (!t.trial_ends_at) return '<div class="text-slate-400">—</div>';
+            const exp = new Date(t.trial_ends_at); exp.setHours(0,0,0,0);
+            const now = new Date(); now.setHours(0,0,0,0);
+            const diff = Math.ceil((exp - now) / (1000*60*60*24));
+            const isExpired = exp < now;
+            const isExpiringSoon = !isExpired && diff <= 30 && t.status !== 'suspended';
+            if (isExpired) {
+              return `<div class="text-rose-400">⏹ ${t.trial_ends_at}</div>`;
+            } else if (isExpiringSoon) {
+              return `<div class="text-amber-400">⏹ ${t.trial_ends_at}<span class="mr-1 px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-full text-[9px] font-black">${diff}د</span></div>`;
+            } else {
+              return `<div class="text-slate-400">⏹ ${t.trial_ends_at}</div>`;
+            }
+          })()}
+        </div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="flex justify-center">${statusBadge[t.status]||t.status}</div>
+      </td>
+      <td class="py-3 px-4">
+        <div class="flex items-center justify-center gap-1.5">
+          <button onclick="openEditModal('${t.id}')" title="تعديل"
+            class="w-7 h-7 rounded-lg bg-[#C9A84C]/10 border border-[#C9A84C]/20 text-[#C9A84C] flex items-center justify-center active:scale-90 transition-transform">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+          </button>
+          <button onclick="toggleStatus('${t.id}','${t.status}')" title="${t.status==='active'?'إيقاف':'تفعيل'}"
+            class="w-7 h-7 rounded-lg ${t.status==='active'?'bg-rose-500/10 border-rose-500/20 text-rose-400':'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'} border flex items-center justify-center active:scale-90 transition-transform">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              ${t.status==='active'
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z"/>'}
+            </svg>
+          </button>
+          <button onclick="openDeleteModal('${t.id}')" title="حذف"
+            class="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-slate-500 flex items-center justify-center active:scale-90 transition-transform hover:text-rose-400">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ─── Toggle Status ─────────────────────────────────────
+async function toggleStatus(id, current) {
+  const next = current === 'active' ? 'suspended' : 'active';
+  try {
+    await sbFetch(TABLE + '?id=eq.' + id, 'PATCH', { status: next });
+    const t = allTenants.find(x=>x.id===id);
+    if (t) t.status = next;
+    renderTable();
+    renderStats();
+    showToast(next==='active' ? '✅ تم تفعيل المكتب' : '⏸ تم إيقاف المكتب');
+  } catch(e) { showToast('خطأ: '+e.message, true); }
+}
+
+// ─── Modal Add ─────────────────────────────────────────
+function openAddModal() {
+  document.getElementById('modal-title').textContent = 'إضافة مكتب جديد';
+  document.getElementById('modal-id').value = '';
+  ['name','email','phone','admin-name','notes'].forEach(f => document.getElementById('f-'+f).value = '');
+  document.getElementById('f-plan').value   = 'free';
+  document.getElementById('f-status').value = 'trial';
+  document.getElementById('f-expires').value = '';
+  document.getElementById('modal-err').classList.add('hidden');
+  document.getElementById('create-only-fields').classList.remove('hidden');
+  document.getElementById('office-modal').classList.remove('hidden');
+}
+
+// ─── Modal Edit ────────────────────────────────────────
+function openEditModal(id) {
+  const t = allTenants.find(x=>x.id===id);
+  if (!t) return;
+  document.getElementById('modal-title').textContent = 'تعديل بيانات المكتب';
+  document.getElementById('modal-id').value    = t.id;
+  document.getElementById('f-name').value      = t.name || '';
+  document.getElementById('f-phone').value     = t.phone || '';
+  document.getElementById('f-plan').value      = t.subscription_plan || 'free';
+  document.getElementById('f-status').value    = t.status || 'active';
+  document.getElementById('f-expires').value   = (t.trial_ends_at || '').slice(0,10);
+  document.getElementById('f-notes').value     = t.notes || '';
+  document.getElementById('modal-err').classList.add('hidden');
+  document.getElementById('create-only-fields').classList.add('hidden');
+  document.getElementById('office-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('office-modal').classList.add('hidden');
+}
+
+// ─── Save Tenant ───────────────────────────────────────
+async function saveTenant() {
+  const name = document.getElementById('f-name').value.trim();
+  const err  = document.getElementById('modal-err');
+
+  if (!name) { err.textContent='اسم المكتب مطلوب'; err.classList.remove('hidden'); err.className='text-[11px] text-rose-400 font-bold text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2'; return; }
+
+  const id = document.getElementById('modal-id').value;
+
+  // تعديل مكتب موجود — بدون لمس حساب الدخول (مفيش عمود إيميل على tenants نفسه)
+  if (id) {
+    err.classList.add('hidden');
+    const payload = {
+      name,
+      phone: document.getElementById('f-phone').value.trim()||null,
+      subscription_plan: document.getElementById('f-plan').value,
+      status: document.getElementById('f-status').value,
+      trial_ends_at: document.getElementById('f-expires').value||null,
+      notes: document.getElementById('f-notes').value.trim()||null,
+    };
+    const btn = document.getElementById('modal-save-btn');
+    btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spinner"></div>';
+    btn.disabled = true;
+    try {
+      await sbFetch(TABLE + '?id=eq.' + id, 'PATCH', payload);
+      const idx = allTenants.findIndex(x=>x.id===id);
+      if (idx>=0) allTenants[idx] = { ...allTenants[idx], ...payload };
+      showToast('✅ تم تحديث بيانات المكتب');
+      renderTable(); renderStats(); closeModal();
+    } catch(e) {
+      err.textContent = 'خطأ: '+e.message;
+      err.classList.remove('hidden');
+    } finally {
+      btn.innerHTML = 'حفظ';
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  // مكتب جديد — بيتعمل له تلقائيًا حساب أدمن أول دخول
+  const email = document.getElementById('f-email').value.trim();
+  if (!email) { err.textContent='البريد الإلكتروني مطلوب لإنشاء حساب الدخول'; err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+  const tenantPayload = {
+    name,
+    phone: document.getElementById('f-phone').value.trim()||null,
+    subscription_plan: document.getElementById('f-plan').value,
+    status: document.getElementById('f-status').value,
+    trial_ends_at: document.getElementById('f-expires').value||null,
+    notes: document.getElementById('f-notes').value.trim()||null,
+  };
+  const adminName = document.getElementById('f-admin-name').value.trim();
+
+  const btn = document.getElementById('modal-save-btn');
+  btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spinner"></div>';
+  btn.disabled = true;
+  try {
+    const token = sessionStorage.getItem('saas_token');
+    const r = await fetch(FN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'createOfficeWithAdmin', token, tenant: tenantPayload, adminEmail: email, adminName }),
+    });
+    const data = await r.json().catch(()=>({}));
+    if (r.status === 401) { doLogout(); throw new Error('الجلسة منتهية'); }
+    if (!r.ok) throw new Error(data.error || 'تعذر إنشاء المكتب');
+
+    allTenants.unshift(data.tenant);
+    renderTable();
+    renderStats();
+
+    // عرض كلمة السر المؤقتة بشكل واضح وثابت (مش toast بيختفي بسرعة)
+    err.className = 'text-[11px] text-emerald-400 font-bold text-center bg-emerald-500/10 border border-emerald-500/20 rounded-xl py-3 px-2 leading-relaxed select-all';
+    err.textContent = `✅ تم إنشاء المكتب. بريد الدخول: ${email} — كلمة السر المؤقتة: ${data.tempPassword} (انسخها وابعتها للعميل، هيُطلب منه تغييرها أول دخول)`;
+    err.classList.remove('hidden');
+  } catch(e) {
+    err.className = 'text-[11px] text-rose-400 font-bold text-center bg-rose-500/10 border border-rose-500/20 rounded-xl py-2';
+    err.textContent = 'خطأ: '+e.message;
+    err.classList.remove('hidden');
+  } finally {
+    btn.innerHTML = 'حفظ';
+    btn.disabled = false;
+  }
+}
+
+// ─── Delete ────────────────────────────────────────────
+function openDeleteModal(id) {
+  deleteTargetId = id;
+  const tenant = allTenants.find(t => t.id === id);
+  // textContent بيتعامل مع النص كنص خام دايمًا (مش HTML)، فمفيش حاجة للـ escaping هنا
+  document.getElementById('delete-msg').textContent = 'هل أنت متأكد من حذف "' + (tenant?.name || '') + '"؟ لا يمكن التراجع.';
+  document.getElementById('delete-modal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+  deleteTargetId = null;
+  document.getElementById('delete-modal').classList.add('hidden');
+}
+async function confirmDelete() {
+  if (!deleteTargetId) return;
+  try {
+    await sbFetch(TABLE + '?id=eq.' + deleteTargetId, 'DELETE');
+    allTenants = allTenants.filter(x=>x.id!==deleteTargetId);
+    renderTable();
+    renderStats();
+    showToast('🗑️ تم حذف المكتب');
+    closeDeleteModal();
+  } catch(e) { showToast('خطأ: '+e.message, true); }
+}
+
+// ─── Plans Tab ─────────────────────────────────────────
+function renderPlans() {
+  const plans = [
+    {
+      id:'free', name:'الباقة المجانية', monthly:0, yearly:0, color:'#64748b',
+      badge: null,
+      features:[
+        { text:'10 قضايا إجمالي', ok:true },
+        { text:'مستخدم واحد', ok:true },
+        { text:'لوحة تحكم أساسية', ok:true },
+        { text:'بوابة الموكل', ok:false },
+        { text:'المساعد الذكي AI', ok:false },
+      ]
+    },
+    {
+      id:'individual', name:'باقة المحامي المستقل', monthly:5, yearly:50, color:'#C9A84C',
+      badge: 'الأكثر طلباً',
+      features:[
+        { text:'20 قضية / شهرياً', ok:true },
+        { text:'مستخدم واحد', ok:true },
+        { text:'المساعد الذكي — 25 سؤال/شهر', ok:true },
+        { text:'نسخ احتياطي', ok:true },
+        { text:'بوابة الموكل', ok:false },
+      ]
+    },
+    {
+      id:'small_firm', name:'باقة المكاتب', monthly:10, yearly:100, color:'#60a5fa',
+      badge: null,
+      features:[
+        { text:'100 قضية / شهرياً', ok:true },
+        { text:'3 مستخدمين بصلاحيات مختلفة', ok:true },
+        { text:'المساعد الذكي AI — بدون حد', ok:true },
+        { text:'بوابة الموكل', ok:true },
+        { text:'تقارير متقدمة', ok:true },
+      ]
+    },
+    {
+      id:'enterprise', name:'باقة المؤسسات', monthly:20, yearly:200, color:'#a78bfa',
+      badge: 'الأفضل للمؤسسات',
+      features:[
+        { text:'قضايا غير محدودة', ok:true },
+        { text:'مستخدمين غير محدودين', ok:true },
+        { text:'المساعد الذكي AI — بدون حد', ok:true },
+        { text:'بوابة الموكل', ok:true },
+        { text:'دعم أولوية 24/7', ok:true },
+      ]
+    },
+  ];
+
+  const counts = {};
+  plans.forEach(p => counts[p.id] = allTenants.filter(t=>t.subscription_plan===p.id && t.status==='active').length);
+
+  document.getElementById('plans-grid').innerHTML = plans.map(p => `
+    <div style="background:#0c1426;border:1px solid ${p.id==='small_firm'?'rgba(96,165,250,0.25)':'rgba(255,255,255,0.05)'};border-radius:24px;padding:20px;position:relative;display:flex;flex-direction:column;gap:16px">
+      <div style="position:absolute;top:0;right:0;left:0;height:2px;background:${p.color};border-radius:24px 24px 0 0;opacity:0.8"></div>
+      ${p.badge ? `<div style="position:absolute;top:14px;left:14px;background:${p.color}22;border:1px solid ${p.color}44;color:${p.color};font-size:9px;font-weight:900;padding:2px 8px;border-radius:20px">${p.badge}</div>` : ''}
+      <div>
+        <p style="font-size:9px;font-weight:900;color:${p.color};letter-spacing:2px;text-transform:uppercase">${p.id}</p>
+        <h3 style="font-size:13px;font-weight:900;color:white;margin-top:4px">${p.name}</h3>
+        <div style="margin-top:12px">
+          <span style="font-size:28px;font-weight:900;color:white">$${p.monthly}</span>
+          <span style="font-size:11px;color:#64748b;font-weight:700">/شهر</span>
+          ${p.yearly>0 ? `<p style="font-size:10px;color:#64748b;font-weight:700;margin-top:2px">أو $${p.yearly} سنوياً <span style="color:#4ade80;font-weight:900">(وفر شهرين)</span></p>` : '<p style="font-size:10px;color:#64748b;font-weight:700;margin-top:2px">مجاناً للأبد</p>'}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+        ${p.features.map(f=>`
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:${f.ok?'#cbd5e1':'#475569'}">
+            <svg style="width:14px;height:14px;flex-shrink:0;color:${f.ok?p.color:'#334155'}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              ${f.ok
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>'}
+            </svg>
+            ${f.text}
+          </div>
+        `).join('')}
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:10px;text-align:center;margin-top:auto">
+        <p style="font-size:10px;color:#475569;font-weight:700">المكاتب النشطة</p>
+        <p style="font-size:24px;font-weight:900;margin-top:4px;color:${p.color}">${counts[p.id]||0}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── Toast ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = isErr ? '#7f1d1d' : '#0c1426';
+  t.style.border = `1px solid ${isErr?'rgba(239,68,68,0.3)':'rgba(200,168,75,0.3)'}`;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.add('hidden'), 3000);
+}
+
+// ─── Inline Note Edit ─────────────────────────────────
+function startEditNote(id) {
+  document.getElementById('note-display-'+id).style.display = 'none';
+  const editDiv = document.getElementById('note-edit-'+id);
+  editDiv.style.display = 'block';
+  const input = document.getElementById('note-input-'+id);
+  input.focus();
+  input.select();
+}
+
+function cancelEditNote(id) {
+  document.getElementById('note-edit-'+id).style.display   = 'none';
+  document.getElementById('note-display-'+id).style.display = 'flex';
+}
+
+async function saveNote(id) {
+  const input   = document.getElementById('note-input-'+id);
+  const newNote = input.value.trim();
+  const t       = allTenants.find(x=>x.id===id);
+  if (!t) return;
+
+  // لو ما اتغيرتش، ارجع من غير ما تعمل request
+  if (newNote === (t.notes||'').trim()) {
+    cancelEditNote(id);
+    return;
+  }
+
+  // إخفاء الـ input وعرض loading مؤقت
+  document.getElementById('note-edit-'+id).style.display   = 'none';
+  const display = document.getElementById('note-display-'+id);
+  display.style.display = 'flex';
+  display.innerHTML     = `<span style="font-size:10px;color:#475569;font-weight:700">جاري الحفظ...</span>`;
+
+  try {
+    await sbFetch(TABLE + '?id=eq.' + id, 'PATCH', { notes: newNote || null });
+    t.notes = newNote || null;
+    // تحديث العرض
+    display.innerHTML = newNote
+      ? `<span style="font-size:10px;color:#94a3b8;font-weight:700">${esc(newNote)}</span>
+         <svg style="width:10px;height:10px;color:#475569;flex-shrink:0;opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>`
+      : `<span style="font-size:10px;color:#334155;font-weight:700;font-style:italic">+ ملاحظة سريعة</span>
+         <svg style="width:10px;height:10px;color:#475569;flex-shrink:0;opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>`;
+    // تحديث الـ input value كمان
+    document.getElementById('note-input-'+id).value = newNote;
+    showToast('📝 تم حفظ الملاحظة');
+  } catch(e) {
+    showToast('خطأ في حفظ الملاحظة: '+e.message, true);
+    // رجّع القيمة القديمة
+    display.innerHTML = (t.notes)
+      ? `<span style="font-size:10px;color:#94a3b8;font-weight:700">${esc(t.notes)}</span>
+         <svg style="width:10px;height:10px;color:#475569;flex-shrink:0;opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>`
+      : `<span style="font-size:10px;color:#334155;font-weight:700;font-style:italic">+ ملاحظة سريعة</span>
+         <svg style="width:10px;height:10px;color:#475569;flex-shrink:0;opacity:0.6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>`;
+  }
+}
+
+// ─── Payments ──────────────────────────────────────────
+const PAY_TABLE = 'tenant_invoices';
+let allPayments = [];
+
+async function loadPayments() {
+  showPayLoading(true);
+  try {
+    const data = await sbFetch(PAY_TABLE + '?order=paid_at.desc&select=*,tenants(name,subscription_plan)');
+    allPayments = data || [];
+    populatePayFilters();
+    renderPayments();
+    renderPayStats();
+  } catch(e) {
+    // جرب بدون join لو الجدول مش فيه foreign key بعد
+    try {
+      const data2 = await sbFetch(PAY_TABLE + '?order=paid_at.desc');
+      allPayments = data2 || [];
+      populatePayFilters();
+      renderPayments();
+      renderPayStats();
+    } catch(e2) {
+      showToast('خطأ في تحميل المدفوعات: ' + e2.message, true);
+      showPayLoading(false, true);
+    }
+  }
+}
+
+function showPayLoading(on, empty=false) {
+  document.getElementById('pay-loading').classList.toggle('hidden', !on);
+  document.getElementById('pay-empty').classList.toggle('hidden', !empty);
+  document.getElementById('pay-wrap').classList.toggle('hidden', on || empty);
+}
+
+function populatePayFilters() {
+  // فلتر المكاتب
+  const officeSelect = document.getElementById('pay-filter-office');
+  const prev = officeSelect.value;
+  officeSelect.innerHTML = '<option value="all">كل المكاتب</option>';
+  const seen = new Set();
+  allPayments.forEach(p => {
+    const id   = p.tenant_id;
+    const name = p.tenants?.name || allTenants.find(t=>t.id===id)?.name || id || '—';
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      officeSelect.innerHTML += `<option value="${id}" ${prev===id?'selected':''}>${esc(name)}</option>`;
+    }
+  });
+
+  // فلتر الشهور
+  const monthSelect = document.getElementById('pay-filter-month');
+  const prevM = monthSelect.value;
+  monthSelect.innerHTML = '<option value="all">كل الشهور</option>';
+  const months = new Set();
+  allPayments.forEach(p => { if (p.paid_at) months.add(p.paid_at.slice(0,7)); });
+  [...months].sort().reverse().forEach(m => {
+    const [y,mo] = m.split('-');
+    const label  = new Date(+y, +mo-1, 1).toLocaleString('ar-EG', {month:'long', year:'numeric'});
+    monthSelect.innerHTML += `<option value="${m}" ${prevM===m?'selected':''}>${label}</option>`;
+  });
+}
+
+function renderPayments() {
+  const officeF = document.getElementById('pay-filter-office')?.value || 'all';
+  const monthF  = document.getElementById('pay-filter-month')?.value  || 'all';
+
+  const filtered = allPayments.filter(p => {
+    const matchO = officeF === 'all' || p.tenant_id === officeF;
+    const matchM = monthF  === 'all' || (p.paid_at||'').startsWith(monthF);
+    return matchO && matchM;
+  });
+
+  if (!filtered.length) { showPayLoading(false, true); return; }
+  showPayLoading(false);
+
+  const planLabel = { free:'مجانية', individual:'مستقل', small_firm:'مكاتب', enterprise:'مؤسسات' };
+  const planColor = { free:'text-slate-400', individual:'text-[#C9A84C]', small_firm:'text-blue-400', enterprise:'text-purple-400' };
+  const methodLabel = { cash:'كاش', bank_transfer:'تحويل بنكي', card:'بطاقة', other:'أخرى' };
+
+  document.getElementById('payments-tbody').innerHTML = filtered.map(p => {
+    const name = p.tenants?.name || allTenants.find(t=>t.id===p.tenant_id)?.name || p.tenant_id || '—';
+    const plan = p.plan_at_payment || p.tenants?.subscription_plan || '';
+    return `
+      <tr class="hover:bg-white/[0.015] transition-colors">
+        <td class="py-3 px-4">
+          <p class="text-xs font-black text-white">${esc(name)}</p>
+          <p class="text-[10px] text-slate-500 font-bold">${methodLabel[p.payment_method]||p.payment_method||'—'}</p>
+        </td>
+        <td class="py-3 px-4 text-center">
+          <span class="text-sm font-black text-emerald-400">$${Number(p.amount_due||0).toFixed(2)}</span>
+        </td>
+        <td class="py-3 px-4">
+          <span class="text-[11px] font-black ${planColor[plan]||'text-slate-400'}">${planLabel[plan]||plan||'—'}</span>
+        </td>
+        <td class="py-3 px-4 text-center">
+          <span class="text-[11px] text-slate-300 font-bold">${p.paid_at||'—'}</span>
+        </td>
+        <td class="py-3 px-4">
+          <span class="text-[10px] text-slate-500 font-bold">${esc(p.notes||'—')}</span>
+        </td>
+        <td class="py-3 px-4 text-center">
+          <button onclick="deletePayment('${p.id}')" title="حذف"
+            class="w-7 h-7 rounded-lg bg-white/5 border border-white/5 text-slate-500 flex items-center justify-center mx-auto active:scale-90 transition-transform hover:text-rose-400">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderPayStats() {
+  const total     = allPayments.reduce((s,p)=>s+Number(p.amount_due||0), 0);
+  const now       = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const lastMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const lastMonthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth()+1).padStart(2,'0')}`;
+
+  const thisMonthTotal = allPayments.filter(p=>(p.paid_at||'').startsWith(thisMonth)).reduce((s,p)=>s+Number(p.amount_due||0),0);
+  const lastMonthTotal = allPayments.filter(p=>(p.paid_at||'').startsWith(lastMonthStr)).reduce((s,p)=>s+Number(p.amount_due||0),0);
+  const thisMonthCount = allPayments.filter(p=>(p.paid_at||'').startsWith(thisMonth)).length;
+
+  const stats = [
+    { label:'إجمالي الإيرادات', value:'$'+total.toFixed(2),           icon:'💵', color:'text-emerald-400', bg:'rgba(74,222,128,0.06)',   border:'rgba(74,222,128,0.2)'   },
+    { label:'الشهر الحالي',      value:'$'+thisMonthTotal.toFixed(2),  icon:'📅', color:'text-[#C9A84C]',   bg:'rgba(200,168,75,0.08)',   border:'rgba(200,168,75,0.2)'   },
+    { label:'الشهر الماضي',      value:'$'+lastMonthTotal.toFixed(2),  icon:'📆', color:'text-blue-400',    bg:'rgba(96,165,250,0.06)',   border:'rgba(96,165,250,0.2)'   },
+    { label:'دفعات هذا الشهر',   value: thisMonthCount,                icon:'🧾', color:'text-purple-400',  bg:'rgba(167,139,250,0.06)', border:'rgba(167,139,250,0.2)' },
+  ];
+
+  document.getElementById('pay-stats-grid').innerHTML = stats.map(s => `
+    <div style="background:${s.bg};border:1px solid ${s.border};border-radius:16px;padding:14px">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] text-slate-500 font-black">${s.label}</span>
+        <span class="text-base">${s.icon}</span>
+      </div>
+      <p class="text-xl font-black ${s.color}">${s.value}</p>
+    </div>
+  `).join('');
+}
+
+// ─── Pay Modal ─────────────────────────────────────────
+function openPayModal() {
+  // ملء قائمة المكاتب
+  const sel = document.getElementById('pf-tenant');
+  sel.innerHTML = '<option value="">اختر المكتب...</option>';
+  allTenants.forEach(t => {
+    sel.innerHTML += `<option value="${t.id}">${esc(t.name)}</option>`;
+  });
+  document.getElementById('pf-amount').value = '';
+  document.getElementById('pf-date').value   = new Date().toISOString().slice(0,10);
+  document.getElementById('pf-plan').value   = 'small_firm';
+  document.getElementById('pf-method').value = 'cash';
+  document.getElementById('pf-notes').value  = '';
+  document.getElementById('pay-modal-err').classList.add('hidden');
+  document.getElementById('pay-modal').classList.remove('hidden');
+}
+
+function closePayModal() {
+  document.getElementById('pay-modal').classList.add('hidden');
+}
+
+async function savePayment() {
+  const tenant_id = document.getElementById('pf-tenant').value;
+  const amount    = document.getElementById('pf-amount').value;
+  const paid_at   = document.getElementById('pf-date').value;
+  const err       = document.getElementById('pay-modal-err');
+
+  if (!tenant_id) { err.textContent='اختر المكتب أولاً';     err.classList.remove('hidden'); return; }
+  if (!amount)    { err.textContent='أدخل المبلغ';           err.classList.remove('hidden'); return; }
+  if (!paid_at)   { err.textContent='أدخل تاريخ الدفع';      err.classList.remove('hidden'); return; }
+  err.classList.add('hidden');
+
+  const payload = {
+    tenant_id,
+    amount_due:      parseFloat(amount),
+    paid_at,
+    plan_at_payment: document.getElementById('pf-plan').value   || null,
+    payment_method:  document.getElementById('pf-method').value || null,
+    notes:           document.getElementById('pf-notes').value.trim() || null,
+  };
+
+  const btn = document.getElementById('pay-save-btn');
+  btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full spinner"></div>';
+  btn.disabled  = true;
+
+  try {
+    const res = await sbFetch(PAY_TABLE, 'POST', payload);
+    const newPay = Array.isArray(res) ? res[0] : res;
+    allPayments.unshift(newPay);
+    populatePayFilters();
+    renderPayments();
+    renderPayStats();
+    showToast('✅ تم تسجيل الدفعة بنجاح');
+    closePayModal();
+  } catch(e) {
+    err.textContent = 'خطأ: ' + e.message;
+    err.classList.remove('hidden');
+  } finally {
+    btn.innerHTML = 'حفظ الدفعة';
+    btn.disabled  = false;
+  }
+}
+
+async function deletePayment(id) {
+  if (!confirm('هل تريد حذف هذه الدفعة؟')) return;
+  try {
+    await sbFetch(PAY_TABLE + '?id=eq.' + id, 'DELETE');
+    allPayments = allPayments.filter(p=>p.id!==id);
+    populatePayFilters();
+    renderPayments();
+    renderPayStats();
+    showToast('🗑️ تم حذف الدفعة');
+  } catch(e) { showToast('خطأ: '+e.message, true); }
+}
+
+// ─── Init ──────────────────────────────────────────────
+if (sessionStorage.getItem('saas_auth')==='1' && sessionStorage.getItem('saas_token')) {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  switchTab('offices');
+  loadTenants();
+}
+</script>
+</body>
+</html>
