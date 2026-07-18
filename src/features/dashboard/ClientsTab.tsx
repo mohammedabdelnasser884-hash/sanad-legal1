@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { I } from '../../constants';
 import type { MappedCase, MappedClient } from '../../hooks/useAppData';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15; // ⚠️ لازم يطابق PAGE_SIZE الفعلي في useAppData.ts (fetchClients)
+                       // — كان هنا 20 غلط، وده كان بيسبب اختفاء آخر موكلين لو
+                       // العدد الكلي بين 16 و20 (زرار "التالي" ما كانش بيظهر
+                       // أصلاً لأن الشرط clientsTotal>PAGE_SIZE كان بيتحقق غلط).
 
 const SearchIcon = () => React.createElement('svg',{className:"w-4 h-4",fill:"none",viewBox:"0 0 24 24",strokeWidth:"2.2",stroke:"currentColor"},
   React.createElement('path',{strokeLinecap:"round",strokeLinejoin:"round",d:"m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607z"})
@@ -53,6 +56,33 @@ function ClientsTab({ cases, clients, clientSearch, setClientSearch, clientsPage
   const filtered  = clients.filter((c: MappedClient) => activeTab === 'individual' ? !isEntity(c) : isEntity(c));
   const indCount  = clients.filter((c: MappedClient) => !isEntity(c)).length;
   const entCount  = clients.filter((c: MappedClient) =>  isEntity(c)).length;
+
+  // ── تحميل تلقائي للصفحة التالية لو التاب الحالي (أفراد/شركات) فاضي ──
+  // محليًا بس لسه فيه موكلين متحمّلينش (fetchClients بتجيب الأنواع مع بعض
+  // بترتيب تاريخ الإضافة، من غير فلترة نوع في الاستعلام نفسه — فممكن كل
+  // الشركات مثلاً تكون متأخرة في صفحات لسه محملتش). بنعتمد بالكامل على
+  // fetchClients الموجودة أصلاً (نفس اللي زرار "التالي" بينادّيها) وبننادّيها
+  // تلقائي بدل انتظار ضغطة يدوية — من غير أي كويري أو تعديل في السيرفر.
+  // سقف أمان (MAX_AUTO_PAGES) عشان ميدخلش في تحميل متكرر لا نهائي لو فعلاً
+  // مفيش عناصر من النوع ده خالص.
+  const autoLoadAttemptsRef = useRef(0);
+  useEffect(() => {
+    autoLoadAttemptsRef.current = 0; // نصفّر العداد كل ما التاب أو البحث يتغيّر
+  }, [activeTab, clientSearch]);
+  useEffect(() => {
+    const MAX_AUTO_PAGES = 10; // ~150 موكل إضافي كحد أقصى قبل ما نوقف ونسيب المستخدم يبحث بالاسم
+    const hasMoreToLoad = clients.length < clientsTotal;
+    if (filtered.length === 0 && hasMoreToLoad && !clientsLoading && autoLoadAttemptsRef.current < MAX_AUTO_PAGES) {
+      autoLoadAttemptsRef.current += 1;
+      fetchClients(clientsPage + 1, clientSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered.length, clients.length, clientsTotal, clientsLoading, activeTab]);
+
+  // هل احنا لسه بنبحث عن عناصر من النوع الحالي في صفحات جاية (سبينر بدل "لا يوجد")
+  const stillSearchingForType = filtered.length === 0 && clientsLoading && clients.length < clientsTotal;
+  // هل وصلنا لسقف الأمان وفيه احتمال يكون فيه عناصر أبعد من كده
+  const hitAutoLoadCap = filtered.length === 0 && !clientsLoading && clients.length < clientsTotal && autoLoadAttemptsRef.current >= 10;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -127,7 +157,7 @@ function ClientsTab({ cases, clients, clientSearch, setClientSearch, clientsPage
             : 'text-slate-500 hover:text-slate-300 border border-transparent'
         }`
       },
-        React.createElement('span',{className:"text-xl leading-none"},"🧑"),
+        React.createElement(I.Suit,{className:`w-[18px] h-[18px] ${activeTab==='individual'?'text-emerald-400':'text-slate-500'}`}),
         "أفراد",
         indCount > 0 && React.createElement('span',{
           className:`text-[9px] font-black px-1.5 py-0.5 rounded-full ${activeTab==='individual'?'bg-emerald-500/30 text-emerald-300':'bg-white/5 text-slate-500'}`
@@ -151,7 +181,7 @@ function ClientsTab({ cases, clients, clientSearch, setClientSearch, clientsPage
     ),
 
     // ── القائمة ──
-    clientsLoading && clients.length===0
+    (clientsLoading && clients.length===0) || stillSearchingForType
       ? React.createElement('div',{className:"flex items-center justify-center py-16 gap-2 text-slate-500 text-xs"},
           React.createElement(I.Spin),"جاري الجلب..."
         )
@@ -170,7 +200,11 @@ function ClientsTab({ cases, clients, clientSearch, setClientSearch, clientsPage
             clientSearch ? `لا توجد نتائج لـ "${clientSearch}"` : activeTab==='individual' ? "لا يوجد أفراد بعد" : "لا توجد شركات بعد"
           ),
           React.createElement('p',{className:"text-slate-500 text-xs"},
-            clientSearch ? "جرب كلمة بحث مختلفة" : "اضغط على موكل جديد للإضافة."
+            clientSearch
+              ? "جرب كلمة بحث مختلفة"
+              : hitAutoLoadCap
+                ? "قد يوجد المزيد ضمن سجل كبير من الموكلين — جرّب البحث بالاسم للوصول لهم مباشرة"
+                : "اضغط على موكل جديد للإضافة."
           )
         )
       : React.createElement('div',{className:"space-y-2"},
