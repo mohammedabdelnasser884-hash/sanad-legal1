@@ -400,4 +400,57 @@ describe('useFeesActions', () => {
       expect(logActivity).not.toHaveBeenCalled();
     });
   });
+
+  describe('handlePermanentDeleteFee — حذف نهائي (باتش 1.3)', () => {
+    it('بيحذف صف case_fees فعليًا (مش تحديث deleted_at)، وبيسجّل النشاط ببيانات القضية/الموكل الصح', async () => {
+      mockDb.setResult('case_fees:delete', { error: null });
+      const { result } = await renderFeesHook();
+      const targetFee = makeFee({ id: 'fee-perm-1', client_name: 'موكل الحذف النهائي' });
+      act(() => { result.current.setFees([targetFee]); });
+
+      await act(async () => { await result.current.handlePermanentDeleteFee('fee-perm-1'); });
+
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('case_fees');
+      expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'حذف أتعاب نهائياً', expect.objectContaining({
+        entity_type: 'fee', entity_id: 'fee-perm-1',
+        client_name: 'موكل الحذف النهائي', case_name: 'قضية عمالية', case_type: 'عمالي',
+      }));
+      expect(toast).toHaveBeenCalledWith('🗑️ تم حذف الأتعاب نهائياً');
+    });
+
+    it('فشل الحذف النهائي → توست فشل، من غير logActivity', async () => {
+      mockDb.setResult('case_fees:delete', { error: { message: 'delete failed' } });
+      const { result } = await renderFeesHook();
+
+      await act(async () => { await result.current.handlePermanentDeleteFee('fee-1'); });
+
+      expect(toast).toHaveBeenCalledWith('❌ فشل حذف الأتعاب نهائياً — تحقق من الاتصال وأعد المحاولة', true);
+      expect(logActivity).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleRestoreFee — استرجاع من الأرشيف', () => {
+    it('نجاح → update({deleted_at:null})، توست نجاح، تسجيل نشاط بالنوع الصحيح', async () => {
+      mockDb.setResult('case_fees:update', { error: null });
+      const { result } = await renderFeesHook();
+
+      await act(async () => { await result.current.handleRestoreFee('fee-1'); });
+
+      expect(mockDb.updateSpy).toHaveBeenCalledWith('case_fees', { deleted_at: null });
+      expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'استرجاع أتعاب من الأرشيف', expect.objectContaining({
+        entity_type: 'fee', entity_id: 'fee-1',
+      }));
+      expect(toast).toHaveBeenCalledWith('✅ تم استرجاع الأتعاب');
+    });
+
+    it('فشل → توست خطأ، من غير logActivity', async () => {
+      mockDb.setResult('case_fees:update', { error: { message: 'restore failed' } });
+      const { result } = await renderFeesHook();
+
+      await act(async () => { await result.current.handleRestoreFee('fee-1'); });
+
+      expect(toast).toHaveBeenCalledWith('❌ فشل استرجاع الأتعاب — تحقق من الاتصال وأعد المحاولة', true);
+      expect(logActivity).not.toHaveBeenCalled();
+    });
+  });
 });
