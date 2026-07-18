@@ -235,8 +235,15 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                             court: finalCourt,
                             type: finalType,
                             court_level: finalCourtLevel,
-                            plaintiff: form.client_name + (form.client_capacity ? ` (${form.client_capacity})` : ''),
-                            defendant: form.opponent + (form.opponent_capacity ? ` (${form.opponent_capacity})` : ''),
+                            // ⚡ FIX: الصفة كانت بتتحط جوه نص plaintiff/defendant نفسه بصيغة
+                            // "الاسم (الصفة)" — ده كان بيكسر أي شاشة تانية بتقرا الاسم مباشرة
+                            // (زي الجلسات المستقلة اللي عندها عمود plaintiff_role/defendant_role
+                            // منفصل أصلاً). دلوقتي بنبعت الاسم نضيف والصفة في عمودها الخاص بيها،
+                            // بنفس الطريقة اللي case_sessions شغالة بيها من الأول.
+                            plaintiff: form.client_name,
+                            plaintiff_role: form.client_capacity || undefined,
+                            defendant: form.opponent,
+                            defendant_role: form.opponent_capacity || undefined,
                         });
                     },
                     className:"w-full py-3.5 bg-gradient-to-tr from-premium-gold to-amber-200 text-premium-bg rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-transform mt-2"
