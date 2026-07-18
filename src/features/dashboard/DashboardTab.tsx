@@ -219,12 +219,20 @@ function DashboardTab({
                         React.createElement('p',{className:"text-[10px] text-slate-400 mt-1 leading-relaxed"},
                             err.errorMsg
                         ),
+                        // ⚡ [جديد] التفاصيل التقنية الخام (نص خطأ Postgres/Supabase
+                        // الحقيقي) — بتظهر بخط صغير رمادي عشان لو المشكلة اتكررت
+                        // تقدر تاخد screenshot وتبعته من غير ما تحتاج توصل
+                        // لأي أدوات مطوّرين (الشغل كله من الموبايل).
+                        err.rawError ? React.createElement('p',{
+                            className:"text-[8px] text-slate-600 mt-1 leading-relaxed break-all",
+                            style:{fontFamily:'monospace',direction:'ltr',textAlign:'right'}
+                        }, err.rawError) : null,
                         err.lastSuccess ? React.createElement('p',{
                             className:"text-[9px] text-slate-600 mt-1"
                         }, `آخر عمل ناجح: ${formatTime(err.lastSuccess)}`) : null
                     ),
                     React.createElement('button',{
-                        onClick:()=>{ try { const raw=localStorage.getItem("sanad_health"); if(raw){const all=JSON.parse(raw); if(all[err.key]){all[err.key].status="unknown";all[err.key].errorMsg=null;} localStorage.setItem("sanad_health",JSON.stringify(all));} }catch{ /* ignore */ } setHealthErrors((prev: ServiceStatus[]) => prev.filter((e: ServiceStatus) => e.key !== err.key)); },
+                        onClick:()=>{ try { const raw=localStorage.getItem("sanad_health"); if(raw){const all=JSON.parse(raw); if(all[err.key]){all[err.key].status="unknown";all[err.key].errorMsg=null;all[err.key].rawError=null;} localStorage.setItem("sanad_health",JSON.stringify(all));} }catch{ /* ignore */ } setHealthErrors((prev: ServiceStatus[]) => prev.filter((e: ServiceStatus) => e.key !== err.key)); },
                         className:"text-slate-600 hover:text-slate-400 transition-colors shrink-0 mt-0.5 text-base leading-none"
                     },"✕")
                 )
