@@ -59,7 +59,6 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
     const [activeSection, setActiveSection] = useState(initialTab);
     const [showEditCase, setShowEditCase] = useState(false);
     const [confirmDeleteCase, setConfirmDeleteCase] = useState(false);
-    const [showStatusPicker, setShowStatusPicker] = useState(false);
     const [docSearch, setDocSearch] = useState('');
     const [viewingDoc, setViewingDoc] = useState<CaseDocWithUrl | null>(null);
 
@@ -69,7 +68,7 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
     // case_type/case_number المعروف. اتصلح من الجذر بتغيير توقيع
     // useCaseDetailActions نفسه ليقبل MappedCase مباشرة، فبقى الاستدعاء هنا
     // بدون أي كاست.
-    const actions = useCaseDetailActions(caseData, onUpdate, onDelete, onNotify, setShowStatusPicker, client, profile);
+    const actions = useCaseDetailActions(caseData, onUpdate, onDelete, onNotify, undefined, client, profile);
     const {
       sessions, notes, docs, loadingSessions,
       showAddSession, setShowAddSession,
@@ -82,7 +81,7 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
       uploadingDoc, docCategory, setDocCategory, docLabel, setDocLabel,
       showDocForm, setShowDocForm, pendingFile, setPendingFile,
       deletingDocId, setDeletingDocId, fileInputRef,
-      savingSession, savingNote, changingStatus,
+      savingSession, savingNote,
       sessionForm, setSessionForm, noteText, setNoteText,
       exportingPdf, showWhatsApp, setShowWhatsApp, officeWhatsAppName,
       confirmDeleteSession, setConfirmDeleteSession,
@@ -90,14 +89,13 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
       confirmDeleteDoc, setConfirmDeleteDoc,
       fetchSessions, handleFileSelect, handleUploadDoc, handleDeleteDoc,
       handleExportPdf, handleAddSession, handleAddNote, handleDeleteNote,
-      handleUpdateNote, handleDeleteSession, handleUpdateSession, handleChangeStatus,
+      handleUpdateNote, handleDeleteSession, handleUpdateSession,
     } = actions;
 
     const statuses: CaseStatusOption[] = [
         {key:'نشطة', color:'emerald', icon:'⚡'},
         {key:'مؤجلة', color:'amber', icon:'⏸'},
-        {key:'منتهية', color:'blue', icon:'✅'},
-        {key:'مغلقة', color:'slate', icon:'🔒'},
+        {key:'منتهية', color:'emerald', icon:'✅'},
     ];
 
     // جلب بيانات المكتب للواتساب
@@ -116,8 +114,7 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
     const statusStyle: Record<string, string> = {
         'نشطة': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
         'مؤجلة': 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-        'منتهية': 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-        'مغلقة': 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+        'منتهية': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
     };
 
     const typeColors: Record<string, string> = {
@@ -323,31 +320,12 @@ function CaseDetailView({caseData, client, onClose, onUpdate, onDelete, onEdit, 
                         className: "w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 hover:bg-rose-500/20 active:scale-90 transition-all",
                         'data-testid': 'case-delete-trigger'
                     }, React.createElement(I.Trash)),
-                    // زر تغيير الحالة
-                    React.createElement('div', {className: "relative"},
-                        React.createElement('button', {
-                            onClick: () => setShowStatusPicker(!showStatusPicker),
-                            className: `flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all ${statusStyle[caseData.status] || statusStyle['نشطة']}`
-                        },
-                            changingStatus ? React.createElement(I.Spin) : React.createElement('span', null, statuses.find((s: CaseStatusOption) =>s.key===caseData.status)?.icon || '⚡'),
-                            React.createElement('span', null, caseData.status || 'نشطة'),
-                            React.createElement('svg', {className: "w-3 h-3 opacity-60", fill: "none", viewBox: "0 0 24 24", strokeWidth: "2.5", stroke: "currentColor"},
-                                React.createElement('path', {strokeLinecap: "round", strokeLinejoin: "round", d: "m19.5 8.25-7.5 7.5-7.5-7.5"})
-                            )
-                        ),
-                        showStatusPicker && React.createElement('div', {className: "absolute top-full left-0 mt-2 bg-premium-card border border-white/10 rounded-2xl overflow-hidden shadow-2xl z-20 min-w-[140px]"},
-                            statuses.map((s: CaseStatusOption) =>
-                                React.createElement('button', {
-                                    key: s.key,
-                                    onClick: () => handleChangeStatus(s.key),
-                                    className: `w-full flex items-center gap-2 px-4 py-3 text-xs font-bold text-right transition-colors ${caseData.status === s.key ? 'bg-white/5 text-premium-gold' : 'text-slate-300 hover:bg-white/5'}`
-                                },
-                                    React.createElement('span', null, s.icon),
-                                    React.createElement('span', null, s.key),
-                                    caseData.status === s.key && React.createElement(I.Check)
-                                )
-                            )
-                        )
+                    // بادج الحالة (عرض فقط - التغيير من مودال التعديل)
+                    React.createElement('div', {
+                        className: `flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black ${statusStyle[caseData.status] || statusStyle['نشطة']}`
+                    },
+                        React.createElement('span', null, statuses.find((s: CaseStatusOption) =>s.key===caseData.status)?.icon || '⚡'),
+                        React.createElement('span', null, caseData.status || 'نشطة')
                     )
                 )
             ),
