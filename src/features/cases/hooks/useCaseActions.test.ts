@@ -187,7 +187,7 @@ describe('useCaseActions', () => {
       expect(mockDb.insertSpy).toHaveBeenCalledWith('case_sessions', [expect.objectContaining({
         case_id: 'new-case-1', session_date: '2026-08-01', session_time: 'مسائي',
       })]);
-      expect(toast).toHaveBeenCalledWith('✅ تم تقييد الدعوى في السيرفر السحابي!');
+      expect(toast).toHaveBeenCalledWith('✅ تم الحفظ في نظام سند!');
       expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'إضافة قضية', expect.objectContaining({
         case_name: 'قضية جديدة', client_name: 'أحمد محمد',
       }));
@@ -207,7 +207,7 @@ describe('useCaseActions', () => {
       await handleSaveCase({ title: 'قضية بدون جلسة' });
 
       expect(mockDb.insertSpy).not.toHaveBeenCalled();
-      expect(toast).toHaveBeenCalledWith('✅ تم تقييد الدعوى في السيرفر السحابي!');
+      expect(toast).toHaveBeenCalledWith('✅ تم الحفظ في نظام سند!');
     });
 
     it('نجاح لكن مفيش id راجع للقضية (RLS مانعة SELECT بعد الإدراج) مع وجود تاريخ → توست تحذير إضافي، بس بيكمل باقي الخطوات', async () => {
@@ -220,7 +220,7 @@ describe('useCaseActions', () => {
       await handleSaveCase({ title: 'قضية بدون id راجع', date: '2026-08-02' });
 
       expect(toast).toHaveBeenCalledWith('⚠️ القضية اتسجلت، بس الجلسة الأولى محتاجة تتضاف يدويًا من صفحة القضية', true);
-      expect(toast).toHaveBeenCalledWith('✅ تم تقييد الدعوى في السيرفر السحابي!');
+      expect(toast).toHaveBeenCalledWith('✅ تم الحفظ في نظام سند!');
       expect(mockDb.insertSpy).not.toHaveBeenCalled();
       expect(params.fetchCases).toHaveBeenCalled();
     });
