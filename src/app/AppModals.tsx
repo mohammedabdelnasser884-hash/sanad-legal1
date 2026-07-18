@@ -119,13 +119,21 @@ function AppModals({
         showAI && createPortal(React.createElement(AILegalAssistant, { onClose: () => setShowAI(false), cases, clients, profile, country }), document.body),
         deleteConfirm && nav.isOpen('delete') && createPortal(React.createElement(DeleteConfirmModal, {
             title: deleteConfirm.title, itemName: deleteConfirm.name, itemType: deleteConfirm.itemType,
-            mode: deleteConfirm.mode || 'delete',
+            // ⚠️ mode ميتبعتش افتراض ثابت هنا دلوقتي: لو deleteConfirm.mode مش
+            // متحدد (زي القضايا بعد باتش 1.1)، المودال بيعرض شاشة اختيار
+            // (أرشفة/حذف نهائي) لوحده. لو متحدد (زي الموكلين/الأتعاب لسه)،
+            // بيفضل نفس السلوك القديم بالظبط.
+            mode: deleteConfirm.mode,
             onConfirm: deleteConfirm.onConfirm,
+            onConfirmArchive: deleteConfirm.onConfirmArchive,
+            onConfirmDelete: deleteConfirm.onConfirmDelete,
+            deleteConsequences: deleteConfirm.deleteConsequences,
             onCancel: () => { nav.closeModal('delete'); _setDeleteConfirm(null); },
             loading: false,
             inputTestId: 'archive-confirm-input',
             confirmTestId: 'archive-confirm-button',
             cancelTestId: 'archive-cancel-button',
+            choiceTestId: 'archive-confirm-choice',
         }), document.body),
         showCaseModal && React.createElement(NewCaseModal, {
             onClose: () => setShowCaseModal(false), onSave: handleSaveCase, loading: savingCase,
