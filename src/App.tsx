@@ -51,14 +51,12 @@ function App() {
     const showClientModal = nav.isOpen('newClient');
     const showSearch      = nav.isOpen('search');
     const showAI          = nav.isOpen('ai');
-    const showSettings    = nav.isOpen('settings');
 
     const setShowCaseModal   = useCallback((v: boolean) => v ? nav.openModal('newCase')    : nav.closeModal('newCase'),    [nav]);
     const setShowLawyerModal = useCallback((v: boolean) => v ? nav.openModal('newLawyer')  : nav.closeModal('newLawyer'),  [nav]);
     const setShowClientModal = useCallback((v: boolean) => v ? nav.openModal('newClient')  : nav.closeModal('newClient'),  [nav]);
     const setShowSearch      = useCallback((v: boolean) => v ? nav.openModal('search')     : nav.closeModal('search'),     [nav]);
     const setShowAI          = useCallback((v: boolean) => v ? nav.openModal('ai')         : nav.closeModal('ai'),         [nav]);
-    const setShowSettings    = useCallback((v: boolean) => v ? nav.openModal('settings')   : nav.closeModal('settings'),   [nav]);
     const showNewSessionModal    = nav.isOpen('newSession');
     const setShowNewSessionModal = useCallback((v: boolean) => v ? nav.openModal('newSession') : nav.closeModal('newSession'), [nav]);
 
@@ -209,7 +207,7 @@ function App() {
         }, Header),
 
         // ── Dropdown menu ──
-        React.createElement(HeaderMenu, { showMenu, setShowHeaderMenu, darkMode, toggleTheme, handlePwaInstall, setShowSettings, country, handleLogout }),
+        React.createElement(HeaderMenu, { showMenu, setShowHeaderMenu, darkMode, toggleTheme, handlePwaInstall, handleLogout }),
 
         React.createElement('main', {
             className: `flex-1 overflow-y-auto no-scrollbar ${tab === 'admin' ? '' : 'px-4 py-4 pb-32'}`,
@@ -244,7 +242,7 @@ function App() {
             ),
             tab === 'documents' && DocsTab,
             tab === 'admin' && (isAdmin
-                ? React.createElement(AdminPanel, { profile, lawyers, clients, fetchLawyers })
+                ? React.createElement(AdminPanel, { profile, lawyers, clients, fetchLawyers, country, onCountryChange: (c: string) => { setCountry(c); } })
                 : React.createElement('div', { className: 'flex flex-col items-center justify-center pt-24 gap-3' },
                     React.createElement('div', { className: 'w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center' },
                         React.createElement(I.Shield, { className: 'w-7 h-7 text-red-400' })
@@ -263,11 +261,11 @@ function App() {
         // ── Modals ────────────────────────────────────────────
         React.createElement(AppModals, {
             cases, clients, lawyers, profile, country, isAdmin, casesFilter, nav,
-            showSearch, showAI, showSettings, showCaseModal, showNewSessionModal,
+            showSearch, showAI, showCaseModal, showNewSessionModal,
             showLawyerModal, showClientModal, savingCase, savingLawyer, savingClient,
             deleteConfirm, selectedClient, selectedCase, selectedCaseInitialTab,
-            setShowSearch, setShowAI, setShowSettings, setShowCaseModal, setShowNewSessionModal,
-            setShowLawyerModal, setShowClientModal, setCountry, setTab,
+            setShowSearch, setShowAI, setShowCaseModal, setShowNewSessionModal,
+            setShowLawyerModal, setShowClientModal, setTab,
             setSelectedCase, setSelectedClient,
             _setDeleteConfirm, _setSelectedClient, _setSelectedCase,
             setCases, setCasesFilter, setCasesPage,
