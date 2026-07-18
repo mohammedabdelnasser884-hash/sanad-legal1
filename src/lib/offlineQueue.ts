@@ -1,6 +1,7 @@
 import { db } from '../supabaseClient';
 import type { Database } from '../database.types';
 import { showOfflineBanner, hideOfflineBanner, showSyncIndicator, hideSyncIndicator, toast } from '../shared/lib/notifications';
+import { logActivity } from '../shared/lib/dataAccess';
 
 // ══════════════════════════════════════════════════════════
 //  Offline Queue (IndexedDB) + __dbWrite — منقول من main.tsx
@@ -62,6 +63,12 @@ export interface OfflineQueueItem {
   knownUpdatedAt?: string | null;
   timestamp: number;
   status: string;
+  // 🔒 FIX (تتبع "إضافة قضية" — 18 يوليو 2026): عدد مرات فشل المزامنة لنفس
+  // العنصر ده. قبل كده، عنصر عالق (مثلاً جلسة مستنية قضية اتعرقلت) كان
+  // بيحاول يتزامن كل دقيقة *للأبد* من غير أي سقف أو تنبيه واضح للمستخدم إن
+  // فيه حاجة محتاجة تدخل يدوي. `undefined`/غير موجود = عنصر قديم من قبل
+  // الفيكس، بنعامله كـ 0.
+  retryCount?: number;
 }
 
 declare global {
@@ -70,6 +77,7 @@ declare global {
     __getOfflineQueue: () => Promise<OfflineQueueItem[]>;
     __getOfflineQueueCount: () => Promise<number>;
     __deleteOfflineItem: (id: number | string) => Promise<void>;
+    __updateOfflineItem: (item: OfflineQueueItem) => Promise<void>;
     __syncOfflineQueue: () => Promise<void>;
     // ⚠️ `table` بقى Generic (T extends DbWriteTable) بدل `string` — بيتحقق
     // وقت الكتابة إن اسم الجدول حقيقي وموجود في database.types.ts (كان ده
@@ -183,6 +191,37 @@ window.__deleteOfflineItem = async (id: number | string) => {
     }
 };
 
+// 🔒 FIX (تتبع "إضافة قضية" — 18 يوليو 2026): بنحفظ العنصر بالكامل تاني (مع
+// retryCount محدَّث) بدل ما نسيبه زي ما هو في الـ IndexedDB — من غيرها،
+// العداد كان هيفضل دايمًا 0/undefined وميقدرش نكتشف العناصر العالقة أبدًا.
+window.__updateOfflineItem = async (item: OfflineQueueItem) => {
+    try {
+        const db    = await openOfflineDB();
+        const tx    = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put(item);
+        return new Promise<void>((res: () => void, rej: (err: unknown) => void) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    } catch (err) {
+        console.error('[Offline] Failed to update item:', err);
+    }
+};
+
+// ══════════════════════════════════════════════════════════
+//  حقول الـ sentinel المؤقتة (_offlineTempId، _offlineCaseTitle،
+//  _offlineCaseTempId) مش أعمدة حقيقية في أي جدول — بيتم إنشاؤها من الكود
+//  عشان تستخدم في الربط وقت المزامنة بس (شوف useCaseActions.ts). لازم
+//  تتشال قبل أي INSERT حقيقي في القاعدة، أونلاين أو أوفلاين، وإلا Supabase
+//  هيرفض العملية بخطأ "column does not exist".
+// ══════════════════════════════════════════════════════════
+function stripOfflineSentinels<T extends Record<string, unknown> | undefined>(data: T): T {
+    if (!data) return data;
+    const cleaned: Record<string, unknown> = {};
+    for (const key of Object.keys(data)) {
+        if (!key.startsWith('_offline')) cleaned[key] = (data as Record<string, unknown>)[key];
+    }
+    return cleaned as T;
+}
+
 // ══════════════════════════════════════════════════════════
 //  Offline Sync Queue — DB Write Wrapper
 // ══════════════════════════════════════════════════════════
@@ -200,6 +239,28 @@ window.__syncOfflineQueue = async function() {
     if (queue.length === 0) return;
     showSyncIndicator(`جاري مزامنة ${queue.length} عملية...`);
     let successCount = 0, failCount = 0;
+    // 🔒 FIX (تتبع زر "إضافة قضية" — 18 يوليو 2026): خريطة tempId → id حقيقي،
+    // بتتبني أثناء التشغيلة دي بس. كانت الجلسة الأولى لقضية أوفلاين بتتربط
+    // بالقضية عن طريق البحث بالعنوان فقط (.eq('title', ...).order(created_at
+    // desc).limit(1)) — لو فيه قضيتين اتضافوا أوفلاين بنفس العنوان بالظبط،
+    // كان ممكن الجلسة تتربط بالقضية الغلط بصمت. دلوقتي المطابقة الأساسية
+    // بقت بالمعرّف المؤقت (فريد لكل عملية إضافة، صفر احتمال تصادم)، والبحث
+    // بالعنوان بقى fallback بس للحالة النادرة إن القضية اتزامنت في تشغيلة
+    // سابقة قبل ما تتزامن الجلسة (التطابق بالـ tempId ميبقاش متاح وقتها لأن
+    // الخريطة دي محلية للتشغيلة الحالية فقط).
+    const tempIdToRealId = new Map<string, string>();
+    // 🔒 FIX (تتبع "إضافة قضية" — 18 يوليو 2026): سقف محاولات — عنصر فشل
+    // ~15 مرة متتالية (يعني قريب من ربع ساعة بمعدل محاولة كل دقيقة، غير
+    // محاولات أحداث 'online'/'load' الإضافية) بيتحسب "عالق" ويتجمع في
+    // stuckItems عشان نطلع تنبيه واحد واضح للمستخدم بدل ما يفضل يحاول
+    // للأبد بصمت من غير ما حد ياخد باله.
+    const RETRY_ALERT_THRESHOLD = 15;
+    const stuckItems: OfflineQueueItem[] = [];
+    async function bumpRetry(item: OfflineQueueItem) {
+        const updated: OfflineQueueItem = { ...item, retryCount: (item.retryCount || 0) + 1 };
+        await window.__updateOfflineItem?.(updated);
+        if (updated.retryCount === RETRY_ALERT_THRESHOLD) stuckItems.push(updated);
+    }
     for (const op of queue) {
         try {
             let error = null;
@@ -210,23 +271,49 @@ window.__syncOfflineQueue = async function() {
                 // كاست ضيق مربوط باسم الجدول الحقيقي المتحقق منه فعلاً (op.table
                 // بقى DbWriteTable مش string)، بنفس نمط __dbWrite تحت بالظبط.
                 // BUG-20 FIX: جلسة مرتبطة بقضية أوفلاين — نجيب الـ id الحقيقي أولاً
-                if (op.table === 'case_sessions' && op.data?._offlineCaseTitle) {
-                    const { data: caseRow } = await db
-                        .from('cases')
-                        .select('id')
-                        .eq('title', op.data._offlineCaseTitle as string)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                    if (!caseRow) {
-                        // القضية لسه مش اتزامنت — نفضل في الـ queue ونكمل
+                if (op.table === 'case_sessions' && (op.data?._offlineCaseTempId || op.data?._offlineCaseTitle)) {
+                    const tempId = op.data?._offlineCaseTempId as string | undefined;
+                    let realCaseId: string | null = null;
+
+                    if (tempId && tempIdToRealId.has(tempId)) {
+                        // القضية اتزامنت فعلاً جوه التشغيلة دي — مطابقة دقيقة
+                        realCaseId = tempIdToRealId.get(tempId) || null;
+                    } else if (tempId && queue.some((q) => q.table === 'cases' && (q.data as Record<string, unknown> | undefined)?._offlineTempId === tempId)) {
+                        // القضية بتاعتها لسه في الطابور (متعالجتش أو فشلت النهاردة) — نستنى الدور الجاي
+                        await bumpRetry(op);
+                        failCount++;
+                        continue;
+                    } else if (op.data?._offlineCaseTitle) {
+                        // Fallback: القضية غالبًا اتزامنت في تشغيلة سابقة ومعندناش tempId مطابق —
+                        // نرجع للبحث بالعنوان كحل احتياطي أخير
+                        const { data: caseRow } = await db
+                            .from('cases')
+                            .select('id')
+                            .eq('title', op.data._offlineCaseTitle as string)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        realCaseId = caseRow?.id || null;
+                    }
+
+                    if (!realCaseId) {
+                        // القضية لسه مش اتزامنت أصلاً — نفضل في الـ queue ونكمل
+                        await bumpRetry(op);
                         failCount++;
                         continue;
                     }
-                    op.data = { ...op.data, case_id: caseRow.id };
+                    op.data = { ...op.data, case_id: realCaseId };
+                    delete op.data._offlineCaseTempId;
                     delete op.data._offlineCaseTitle;
                 }
-                ({ error } = await db.from(op.table).insert([op.data as Database['public']['Tables'][typeof op.table]['Insert']]));
+                const insertData = stripOfflineSentinels(op.data);
+                if (op.table === 'cases' && op.data?._offlineTempId) {
+                    const res = await db.from(op.table).insert([insertData as Database['public']['Tables'][typeof op.table]['Insert']]).select('id').single();
+                    error = res.error;
+                    if (!error && res.data) tempIdToRealId.set(op.data._offlineTempId as string, (res.data as { id: string }).id);
+                } else {
+                    ({ error } = await db.from(op.table).insert([insertData as Database['public']['Tables'][typeof op.table]['Insert']]));
+                }
             } else if (op.type === 'UPDATE') {
                 // op.id هنا هي الـ id الحقيقي (string) بتاع السجل — مش الرقم
                 // التلقائي بتاع IndexedDB (ده بس لعمليات INSERT، زي ما موثّق
@@ -260,15 +347,36 @@ window.__syncOfflineQueue = async function() {
             } else if (!error) {
                 await window.__deleteOfflineItem(op.id);
                 successCount++;
+                // 🔒 FIX (تتبع "إضافة قضية" — 18 يوليو 2026): قضية اتضافت وإنت
+                // أوفلاين ماكانتش بتتسجل في "سجل النشاط" خالص — لا وقت الإضافة
+                // (لسه معندهاش id حقيقي) ولا بعد كده وقت المزامنة (مفيش نداء
+                // logActivity أصلاً في المسار ده). النتيجة: أي قضية اتضافت
+                // أوفلاين كانت تختفي تمامًا من السجل. بنسجّلها هنا دلوقتي، بعد
+                // نجاح الإدراج الحقيقي فعليًا، بنفس شكل نشاط "إضافة قضية" اللي
+                // بيتسجل في المسار الأونلاين.
+                if (op.type === 'INSERT' && op.table === 'cases') {
+                    const newId = tempIdToRealId.get(op.data?._offlineTempId as string) || null;
+                    const title = (op.data?.title as string) || null;
+                    const caseType = (op.data?.case_type as string) || null;
+                    logActivity(db, 'إضافة قضية', {
+                        entity_type: 'case',
+                        entity_id: newId,
+                        details: title ? `${title} (أُضيفت أوفلاين)` : 'أُضيفت أوفلاين',
+                        case_name: title,
+                        case_type: caseType,
+                    });
+                }
             } else {
                 // BUG FIX: كان بيتجاهل تفاصيل الخطأ تمامًا، فمستحيل تعرف ليه
                 // عملية معينة فاضلة عالقة في الـ queue ومش بتتزامن أبدًا
                 // (مثلاً قيمة مفقودة مطلوبة، أو RLS بترفض الإدراج).
                 console.error('[Offline Sync] فشلت عملية', op.type, op.table, '—', error?.message || error);
+                await bumpRetry(op);
                 failCount++;
             }
         } catch (err) {
             console.error('[Offline Sync] استثناء غير متوقع في عملية', op.type, op.table, '—', err);
+            await bumpRetry(op);
             failCount++;
         }
     }
@@ -278,6 +386,14 @@ window.__syncOfflineQueue = async function() {
     } else if (failCount > 0) {
         hideSyncIndicator(`⚠️ تمت جزئياً (${successCount}/${successCount + failCount})`);
     } else { hideSyncIndicator(); }
+    // 🔒 FIX (تتبع "إضافة قضية" — 18 يوليو 2026): تنبيه واحد واضح (مش تكرار
+    // كل دقيقة) أول ما عنصر يعدّي سقف المحاولات — بدل ما يفضل يحاول للأبد
+    // بصمت من غير ما حد ياخد باله إنه محتاج تدخل يدوي (مثلاً بيانات ناقصة،
+    // أو قضية مرتبطة فشلت تتزامن نهائيًا).
+    if (stuckItems.length > 0) {
+        toast(`⚠️ فيه ${stuckItems.length} عملية عالقة من فترة طويلة ومش بتتزامن — راجع اتصالك بالإنترنت، ولو المشكلة استمرت تواصل مع الدعم`, true);
+        console.error('[Offline Sync] عناصر عالقة تجاوزت سقف المحاولات:', stuckItems);
+    }
     window.dispatchEvent(new CustomEvent('offline-sync-complete'));
     } finally {
         __syncQueueRunning = false;
@@ -329,15 +445,22 @@ window.__dbWrite = async function <T extends DbWriteTable>({ type, table, data, 
             let insertedRow: Partial<Database['public']['Tables'][T]['Row']> | null = null;
             let updatedRow: Partial<Database['public']['Tables'][T]['Row']> | null = null;
             if (type === 'INSERT') {
+                // 🔒 FIX: `data` ممكن يحمل حقول sentinel مؤقتة (_offlineTempId...)
+                // متبعتة دايمًا من useCaseActions.ts بغض النظر عن أونلاين/أوفلاين
+                // (عشان لو الاتصال قطع فجأة أثناء المحاولة، يبقى معاها بيانات
+                // كافية للربط وقت المزامنة اللاحقة). مش أعمدة حقيقية، فلازم
+                // تتشال هنا قبل أي INSERT حقيقي أونلاين وإلا Supabase هيرفض
+                // العملية بخطأ "column does not exist".
+                const cleanData = stripOfflineSentinels(data);
                 if (returning) {
                     // بنرجّع الصف المُدرج فعليًا (بدل ما نسيب الكولر يخمّن الـ id
                     // بإعادة استعلام بالعنوان/التاريخ — ده كان بيسبب ربط غلط
                     // في حالات نادرة زي إدخال قضيتين بنفس العنوان في نفس اللحظة)
-                    const res = await dbFrom(table).insert([data as Database['public']['Tables']['cases']['Insert']]).select().single();
+                    const res = await dbFrom(table).insert([cleanData as Database['public']['Tables']['cases']['Insert']]).select().single();
                     error = res.error;
                     insertedRow = res.data as unknown as Partial<Database['public']['Tables'][T]['Row']> | null;
                 } else {
-                    ({ error } = await dbFrom(table).insert([data as Database['public']['Tables']['cases']['Insert']]));
+                    ({ error } = await dbFrom(table).insert([cleanData as Database['public']['Tables']['cases']['Insert']]));
                 }
             } else if (type === 'UPDATE') {
                 // Optimistic Locking — online
