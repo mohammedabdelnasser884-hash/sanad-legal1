@@ -33,14 +33,32 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
     };
     const split = splitNum(caseData.number);
 
-    // استخراج الموكل وصفته من حقل plaintiff
+    // ⚡ FIX: الموكل والصفة كانوا بيتقروا بـ regex من نص plaintiff نفسه
+    // (نمط "الاسم (الصفة)") — ده كان بيتعارض مع عمود plaintiff_role/
+    // defendant_role الموجود فعليًا في جدول cases (ومُستخدم بالفعل في
+    // الجلسات المستقلة). دلوقتي بنقرا الصفة من عمودها المخصص مباشرة.
+    // الـ fallback على الـ regex اتسيب بس لأي صف قديم لسه معندوش
+    // plaintiff_role متعبي (قبل تشغيل migration الـ backfill)، عشان
+    // مايضيعش بيانات صفة قديمة كانت متخزنة جوه النص.
+    //
+    // ⚠️ FIX تاني: الموكل ممكن يكون شركة، وأسماء الشركات المصرية غالبًا
+    // بتنتهي بـ"(ش.م.م)" أو "(ذ.م.م)" — ده جزء من اسم الشركة مش صفة
+    // قانونية. عشان كده الـ fallback بيقسم بس لو اللي جوه القوسين فعلاً
+    // كلمة صفة معروفة (مدعي/مدعى عليه/مستأنف/طاعن...)، وإلا بيسيب النص
+    // كله زي ما هو كاسم (من غير ما يقطع جزء من اسم الشركة).
+    const knownCapacityPattern = /مدعي|مدعى عليه|مستأنف|طاعن|مطعون ضده|متهم|مجني عليه|محكوم عليه|خصم|مدين|دائن|موكل|وكيل|طالب|مطلوب ضده|منفذ ضده/;
     const splitParty = (val: string | null) => {
         if(!val) return {name:'',capacity:''};
         const m = val.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
-        return m ? {name:m[1].trim(), capacity:m[2].trim()} : {name:val, capacity:''};
+        if(m && knownCapacityPattern.test(m[2])) return {name:m[1].trim(), capacity:m[2].trim()};
+        return {name:val, capacity:''};
     };
-    const clientParts = splitParty(caseData.plaintiff);
-    const opponentParts = splitParty(caseData.defendant);
+    const clientParts = caseData.plaintiff_role
+        ? {name: caseData.plaintiff || '', capacity: caseData.plaintiff_role}
+        : splitParty(caseData.plaintiff);
+    const opponentParts = caseData.defendant_role
+        ? {name: caseData.defendant || '', capacity: caseData.defendant_role}
+        : splitParty(caseData.defendant);
 
     // تحديد لو درجة التقاضي هي أخرى
     const knownLevels = ['ابتدائي','استئناف','نقض'];
@@ -279,8 +297,14 @@ function EditCaseModal({caseData, onClose, onSave, countryCourts, countryCaseTyp
                         court: finalCourt,
                         type: finalType,
                         court_level: finalCourtLevel,
-                        plaintiff: form.client_name + (form.client_capacity ? ` (${form.client_capacity})` : ''),
-                        defendant: form.opponent + (form.opponent_capacity ? ` (${form.opponent_capacity})` : ''),
+                        // ⚡ FIX: الاسم والصفة بيتبعتوا دلوقتي في عمودين منفصلين
+                        // (plaintiff/plaintiff_role, defendant/defendant_role) بدل
+                        // دمج الصفة جوه نص الاسم بأقواس — نفس الطريقة اللي
+                        // case_sessions شغالة بيها من الأول.
+                        plaintiff: form.client_name,
+                        plaintiff_role: form.client_capacity || undefined,
+                        defendant: form.opponent,
+                        defendant_role: form.opponent_capacity || undefined,
                     };
                     onSave(saveData);
                 },
