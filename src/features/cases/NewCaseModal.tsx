@@ -61,25 +61,16 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                 // الموكل + صفته
                 React.createElement('div',{className:"grid grid-cols-2 gap-2"},
                     React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"الموكل"),
-                        React.createElement('input',{value:form.client_name,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_name',e.target.value),placeholder:"اسم الموكل",className:inputCls,style:inpStyle})
+                        React.createElement(Inp,{label:"الموكل",value:form.client_name,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_name',e.target.value),placeholder:"اسم الموكل",required:true,readOnly:!!form.client_id,className:form.client_id?"w-full p-3 text-xs rounded-xl border border-white/10 bg-white/5 text-slate-300 placeholder-slate-600 cursor-not-allowed":undefined,'data-testid':'new-case-client-name'}),
+                        form.client_id&&React.createElement('p',{className:"text-[9px] text-slate-500 mt-1"},"🔗 مربوط بموكل من النظام — لتعديله اختر «بدون ربط» بالأسفل")
                     ),
-                    React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"صفة الموكل"),
-                        React.createElement('input',{value:form.client_capacity,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_capacity',e.target.value),placeholder:"مثال: مدعي / متهم...",className:inputCls,style:inpStyle})
-                    )
+                    React.createElement(Inp,{label:"صفة الموكل",value:form.client_capacity,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('client_capacity',e.target.value),placeholder:"مثال: مدعي / متهم...",required:true,'data-testid':'new-case-client-capacity'})
                 ),
 
                 // الخصم + صفته
                 React.createElement('div',{className:"grid grid-cols-2 gap-2"},
-                    React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"الخصم"),
-                        React.createElement('input',{value:form.opponent,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent',e.target.value),placeholder:"اسم الخصم",className:inputCls,style:inpStyle})
-                    ),
-                    React.createElement('div',null,
-                        React.createElement('label',{className:"block text-[10px] font-bold text-slate-400 mb-1.5"},"صفة الخصم"),
-                        React.createElement('input',{value:form.opponent_capacity,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent_capacity',e.target.value),placeholder:"مثال: مدعى عليه...",className:inputCls,style:inpStyle})
-                    )
+                    React.createElement(Inp,{label:"الخصم",value:form.opponent,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent',e.target.value),placeholder:"اسم الخصم",required:true,'data-testid':'new-case-opponent'}),
+                    React.createElement(Inp,{label:"صفة الخصم",value:form.opponent_capacity,onChange:(e: React.ChangeEvent<HTMLInputElement>) =>s('opponent_capacity',e.target.value),placeholder:"مثال: مدعى عليه...",required:true,'data-testid':'new-case-opponent-capacity'})
                 ),
 
                 // ── بيانات القيد الرسمي ──
@@ -192,7 +183,17 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                 clients.length>0&&React.createElement(Sel,{
                     label:"ربط بموكل من النظام (اختياري)",
                     value:form.client_id,
-                    onChange:(e: React.ChangeEvent<HTMLSelectElement>) =>s('client_id',e.target.value),
+                    onChange:(e: React.ChangeEvent<HTMLSelectElement>) =>{
+                        const id = e.target.value;
+                        s('client_id',id);
+                        // لو اختار موكل فعلي من القائمة، نملى حقل "الموكل" فوق
+                        // تلقائيًا باسمه (يفضل قابل للتعديل بعد كده). لو رجع
+                        // لـ "بدون ربط"، ما بنمسحش اللي هو كاتبه بإيده.
+                        if(id){
+                            const picked = clients.find((c: ClientRow) =>c.id===id);
+                            if(picked) s('client_name',picked.full_name||'');
+                        }
+                    },
                     options:[{value:'',label:'— اختر موكلاً (اختياري) —'},...clients.map((c: ClientRow) =>({value:c.id,label:c.full_name}))]
                 }),
 
@@ -219,7 +220,11 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                     disabled:loading,
                     'data-testid':'new-case-save',
                     onClick:()=>{
-                        if(!form.title){toast('يرجى إدخال موضوع الدعوى',true);return;}
+                        if(!form.title.trim()){toast('يرجى إدخال موضوع ومسمى الدعوى',true);return;}
+                        if(!form.client_name.trim()){toast('يرجى إدخال اسم الموكل',true);return;}
+                        if(!form.client_capacity.trim()){toast('يرجى إدخال صفة الموكل',true);return;}
+                        if(!form.opponent.trim()){toast('يرجى إدخال اسم الخصم',true);return;}
+                        if(!form.opponent_capacity.trim()){toast('يرجى إدخال صفة الخصم',true);return;}
                         const number = form.caseNum&&form.caseYear ? form.caseNum+'/'+form.caseYear : form.caseNum||form.caseYear||'';
                         const finalCourtLevel = form.court_level==='أخرى' ? form.court_level_other : form.court_level;
                         const finalCourt = form.court==='أخرى' ? (form.court_other||'—') : (form.court||'—');
@@ -235,7 +240,7 @@ function NewCaseModal({onClose,onSave,loading,lawyers,isAdmin,clients,countryCou
                         });
                     },
                     className:"w-full py-3.5 bg-gradient-to-tr from-premium-gold to-amber-200 text-premium-bg rounded-xl font-black text-sm shadow-md flex items-center justify-center gap-2 disabled:opacity-60 active:scale-95 transition-transform mt-2"
-                },loading?React.createElement(I.Spin):React.createElement(I.Plus),loading?'جاري الحفظ...':'حفظ وتقييد الدعوى ☁️')
+                },loading?React.createElement(I.Spin):React.createElement(I.Plus),loading?'جاري الحفظ...':'حفظ وتقييد الدعوى')
             )
         )
     );
