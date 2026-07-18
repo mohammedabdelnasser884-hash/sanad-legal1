@@ -40,8 +40,11 @@ interface DeleteConfirmState {
     name: string;
     itemType: string;
     title: string;
-    mode: 'archive' | 'delete';
-    onConfirm: () => void | Promise<void>;
+    mode?: 'archive' | 'delete';
+    onConfirm?: () => void | Promise<void>;
+    onConfirmArchive?: () => void | Promise<void>;
+    onConfirmDelete?: () => void | Promise<void>;
+    deleteConsequences?: string[];
 }
 
 export function useClientActions(params: {
@@ -154,16 +157,37 @@ export function useClientActions(params: {
         setShowClientModal(false);
     };
 
-    // ─ أرشفة موكل (بدل حذف نهائي — البند 8 من قائمة الإجراءات) ─
+    // ─ حذف موكل نهائيًا من قاعدة البيانات (مرحلة 2 — مكتمل، مفيش كود إضافي مطلوب) ─
+    // ⚠️ القرار المحسوم فى الخطة (18 يوليو 2026) بعد تحقق فعلي من delete_rule
+    // الحقيقي فى الداتابيز الحية: حذف موكل نهائيًا لازم يحذف الموكل فقط، وميحذفش
+    // القضايا ولا الأتعاب المرتبطة بيه. الـ FKs الحقيقية بتحقق ده تلقائيًا:
+    //   - cases.client_id / case_fees.client_id / fee_payments.client_id → SET NULL
+    //     (القضايا والأتعاب تفضل موجودة، بس الربط بالموكل بيتصفّر)
+    //   - client_messages / client_portal_sessions / client_portal_pins → CASCADE
+    //     (بيانات بوابة الموكل نفسه، بتتحذف تلقائيًا معاه — منطقي، مفيش معنى لها من غيره)
+    // يعني الدالة دي مش محتاجة أي كاسكيد يدوي ولا تحذير "عندك قضايا مرتبطة" —
+    // الحذف بيعدي عادي دايمًا (مفيش FK هيرفضه) والقضايا/الأتعاب تفضل موجودة.
+    const handlePermanentDeleteClient = async (clientId: string) => {
+        const cl = clients.find((x) => x.id === clientId);
+        const { error } = await db.from('clients').delete().eq('id', clientId);
+        nav.closeModal('delete');
+        setDeleteConfirm(null);
+        if (error) { toast('❌ فشل حذف الموكل نهائياً — تحقق من الاتصال وأعد المحاولة', true); return; }
+        toast('🗑️ تم حذف الموكل نهائياً');
+        logActivity(db, 'حذف موكل نهائياً', { userName: _userName, entity_type: 'client', entity_id: clientId, details: cl?.full_name || null, client_name: cl?.full_name || null });
+        setSelectedClient(null);
+        setClients((prev) => prev.filter((c) => c.id !== clientId));
+    };
+
+    // ─ حذف موكل: يعرض اختيار (أرشفة/حذف نهائي) عن طريق DeleteConfirmModal ─
     const handleDeleteClient = async (clientId: string) => {
         const cl = clients.find((x) => x.id === clientId);
         setDeleteConfirm({
             type: 'client', id: clientId,
             name: cl?.full_name || 'الموكل',
             itemType: 'الموكل',
-            title: 'أرشفة الموكل',
-            mode: 'archive',
-            onConfirm: async () => {
+            title: 'حذف الموكل',
+            onConfirmArchive: async () => {
                 const { error } = await db.from('clients').update({ deleted_at: new Date().toISOString() }).eq('id', clientId);
                 nav.closeModal('delete');
                 setDeleteConfirm(null);
@@ -172,7 +196,13 @@ export function useClientActions(params: {
                 logActivity(db, 'أرشفة موكل', { userName: _userName, entity_type: 'client', entity_id: clientId, details: cl?.full_name || null, client_name: cl?.full_name || null });
                 setSelectedClient(null);
                 setClients((prev) => prev.filter((c) => c.id !== clientId));
-            }
+            },
+            onConfirmDelete: () => handlePermanentDeleteClient(clientId),
+            deleteConsequences: [
+                'سيُحذف نهائيًا: بيانات الموكل، ورسائل/جلسات/أكواد بوابة الموكل الخاصة به فقط.',
+                'القضايا والأتعاب المرتبطة بالموكل تفضل محفوظة بالكامل — بس رابطها بالموكل بيتصفّر.',
+                'لا يمكن التراجع عن هذا الإجراء.',
+            ],
         });
     };
 
@@ -264,5 +294,5 @@ export function useClientActions(params: {
         setSavingLawyer(false);
     };
 
-    return { handleSaveClient, handleDeleteClient, handleRestoreClient, handleUpdateClient, handleSaveLawyer };
+    return { handleSaveClient, handleDeleteClient, handlePermanentDeleteClient, handleRestoreClient, handleUpdateClient, handleSaveLawyer };
 }
