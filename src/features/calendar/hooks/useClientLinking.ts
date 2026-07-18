@@ -13,7 +13,7 @@ export type SavedFormData = { form: Form; finalCaseType: string; fullCaseNumber:
  * handleLinkCase, handleLinkExistingClient, handleAddAndLinkClient,
  * handleAddClientOnly.
  */
-export function useClientLinking(savedFormData: SavedFormData | null, onSaved: () => void) {
+export function useClientLinking(savedFormData: SavedFormData | null, onSaved: () => void, onClientAdded?: () => void) {
   const [linkingCase, setLinkingCase] = useState(false);
   const [linkingClient, setLinkingClient] = useState(false);
   const [createdCaseId, setCreatedCaseId] = useState<string | null>(null);
@@ -35,11 +35,19 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
         court: f.court || null,
         case_type: ct || null,
         plaintiff: f.plaintiff || null,
+        plaintiff_role: f.plaintiff_role || null,
         plaintiff_national_id: f.plaintiff_national_id || null,
         plaintiff_power_of_attorney: f.plaintiff_power_of_attorney || null,
         defendant: f.defendant || null,
+        defendant_role: f.defendant_role || null,
         defendant_national_id: f.defendant_national_id || null,
         circuit_number: f.circuit_number || null,
+        // ⚡ FIX: كانت الصفة (plaintiff_role/defendant_role) والدور/القاعة
+        // (session_floor→court_floor, session_hall) بيتسجلوا صح في الجلسة
+        // المستقلة لكن بيضيعوا وقت تحويلها لملف قضية، لأن الإدراج القديم
+        // هنا كان مش بينقلهم خالص رغم إن الأعمدة دلوقتي موجودة في cases.
+        court_floor: f.session_floor || null,
+        session_hall: f.session_hall || null,
         status: 'نشطة',
       }]).select('id').single();
       if (error) {
@@ -119,7 +127,7 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
       if (linkErr) {
         showErrorToast('session_client_link', linkErr, 'تعذّر ربط الموكل بالجلسة. حاول مرة أخرى. لو المشكلة استمرت، تواصل مع الدعم.', 'ربط الموكل بالجلسة');
       }
-      else { toast('✅ تمت إضافة الموكل وربطه بالقضية'); setClientStep('done'); }
+      else { toast('✅ تمت إضافة الموكل وربطه بالقضية'); setClientStep('done'); onClientAdded?.(); }
     } catch { toast('❌ خطأ غير متوقع', true); }
     finally { setLinkingToCase(false); }
   };
@@ -146,7 +154,7 @@ export function useClientLinking(savedFormData: SavedFormData | null, onSaved: (
       if (error) {
         showErrorToast('client_create', error, 'تعذّر إضافة الموكل. تحقق من صحة البيانات. لو المشكلة استمرت، تواصل مع الدعم.', 'إضافة موكل');
       }
-      else toast('✅ تمت إضافة الموكل لقائمة الموكلين');
+      else { toast('✅ تمت إضافة الموكل لقائمة الموكلين'); onClientAdded?.(); }
     } catch { toast('❌ خطأ غير متوقع', true); }
     finally { setLinkingClient(false); }
   };
