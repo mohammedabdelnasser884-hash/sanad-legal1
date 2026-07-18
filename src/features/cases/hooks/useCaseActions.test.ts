@@ -23,7 +23,9 @@ function makeMockDb() {
   const configured: Record<string, Result> = {};
   const insertSpy = vi.fn();
   const updateSpy = vi.fn();
+  const deleteSpy = vi.fn();
   const authSignOut = vi.fn(() => Promise.resolve({ error: null }));
+  const storageRemoveSpy = vi.fn();
 
   const setResult = (key: string, result: Result) => { configured[key] = result; };
   const get = (key: string) => configured[key] ?? DEFAULT_RESULT;
@@ -50,12 +52,34 @@ function makeMockDb() {
           updateSpy(table, payload);
           return { eq: vi.fn(() => Promise.resolve(get(`${table}:update`))) };
         }),
+        delete: vi.fn(() => {
+          deleteSpy(table);
+          return { eq: vi.fn(() => Promise.resolve(get(`${table}:delete`))) };
+        }),
+      };
+    }
+    // مرحلة 2: جلب storage_path لمستندات القضية قبل حذفها نهائيًا
+    // (شوف handlePermanentDeleteCase — db.from('case_documents').select('storage_path').eq('case_id', X))
+    if (table === 'case_documents') {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve(get(`${table}:select`))),
+        })),
       };
     }
     return {};
   });
 
-  return { from, setResult, insertSpy, updateSpy, authSignOut };
+  const storage = {
+    from: vi.fn(() => ({
+      remove: vi.fn((paths: string[]) => {
+        storageRemoveSpy(paths);
+        return Promise.resolve(get('case-docs:remove'));
+      }),
+    })),
+  };
+
+  return { from, storage, setResult, insertSpy, updateSpy, deleteSpy, authSignOut, storageRemoveSpy };
 }
 
 let mockDb = makeMockDb();
@@ -63,6 +87,7 @@ vi.mock('../../../supabaseClient', () => ({
   db: {
     from: (...a: Parameters<typeof mockDb.from>) => mockDb.from(...a),
     auth: { signOut: () => mockDb.authSignOut() },
+    storage: { from: (...a: Parameters<typeof mockDb.storage.from>) => mockDb.storage.from(...a) },
   },
 }));
 
@@ -264,9 +289,8 @@ describe('useCaseActions', () => {
     });
   });
 
-  describe('handleDeleteCase — أرشفة (soft delete)', () => {
-    it('بينشئ deleteConfirm بوضع archive، وعند onConfirm بيحدّث deleted_at، يقفل المودال، ويسجّل النشاط بـ case_type من MappedCase (type مش case_type)', async () => {
-      mockDb.setResult('cases:update', { error: null });
+  describe('handleDeleteCase — يعرض اختيار (بدون mode ثابتة)', () => {
+    it('بينشئ deleteConfirm من غير mode ثابتة (عشان المودال يعرض شاشة اختيار أرشفة/حذف نهائي)، مع onConfirmArchive وonConfirmDelete جاهزين', async () => {
       const targetCase = makeCase({ id: 'case-archive-1', title: 'قضية للأرشفة', type: 'جنائي', client_id: 'client-1' });
       const params = makeParams({ cases: [targetCase] });
       const { handleDeleteCase } = useCaseActions(params);
@@ -274,35 +298,157 @@ describe('useCaseActions', () => {
       await handleDeleteCase('case-archive-1');
 
       expect(params.setDeleteConfirm).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'case', id: 'case-archive-1', mode: 'archive', name: 'قضية للأرشفة',
+        type: 'case', id: 'case-archive-1', name: 'قضية للأرشفة',
       }));
       const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      await deleteConfirmArg.onConfirm();
-
-      expect(mockDb.updateSpy).toHaveBeenCalledWith('cases', expect.objectContaining({ deleted_at: expect.any(String) }));
-      expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
-      expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
-      expect(toast).toHaveBeenCalledWith('📦 تم نقل القضية للأرشيف');
-      expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'أرشفة قضية', expect.objectContaining({
-        entity_type: 'case', entity_id: 'case-archive-1',
-        case_name: 'قضية للأرشفة', case_type: 'جنائي', client_name: 'أحمد محمد',
-      }));
-      expect(params.setSelectedCase).toHaveBeenCalledWith(null);
+      expect(deleteConfirmArg.mode).toBeUndefined();
+      expect(typeof deleteConfirmArg.onConfirmArchive).toBe('function');
+      expect(typeof deleteConfirmArg.onConfirmDelete).toBe('function');
     });
 
-    it('فشل الأرشفة → توست فشل، من غير logActivity أو تحديث state', async () => {
-      mockDb.setResult('cases:update', { error: { message: 'archive failed' } });
-      const targetCase = makeCase({ id: 'case-archive-2' });
+    describe('اختيار "أرشفة" (onConfirmArchive)', () => {
+      it('بيحدّث deleted_at، يقفل المودال، ويسجّل النشاط بـ case_type من MappedCase (type مش case_type)', async () => {
+        mockDb.setResult('cases:update', { error: null });
+        const targetCase = makeCase({ id: 'case-archive-1', title: 'قضية للأرشفة', type: 'جنائي', client_id: 'client-1' });
+        const params = makeParams({ cases: [targetCase] });
+        const { handleDeleteCase } = useCaseActions(params);
+
+        await handleDeleteCase('case-archive-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmArchive();
+
+        expect(mockDb.updateSpy).toHaveBeenCalledWith('cases', expect.objectContaining({ deleted_at: expect.any(String) }));
+        expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
+        expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
+        expect(toast).toHaveBeenCalledWith('📦 تم نقل القضية للأرشيف');
+        expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'أرشفة قضية', expect.objectContaining({
+          entity_type: 'case', entity_id: 'case-archive-1',
+          case_name: 'قضية للأرشفة', case_type: 'جنائي', client_name: 'أحمد محمد',
+        }));
+        expect(params.setSelectedCase).toHaveBeenCalledWith(null);
+      });
+
+      it('فشل الأرشفة → توست فشل، من غير logActivity أو تحديث state', async () => {
+        mockDb.setResult('cases:update', { error: { message: 'archive failed' } });
+        const targetCase = makeCase({ id: 'case-archive-2' });
+        const params = makeParams({ cases: [targetCase] });
+        const { handleDeleteCase } = useCaseActions(params);
+
+        await handleDeleteCase('case-archive-2');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmArchive();
+
+        expect(toast).toHaveBeenCalledWith('❌ فشل أرشفة القضية — تحقق من الاتصال وأعد المحاولة', true);
+        expect(logActivity).not.toHaveBeenCalled();
+        expect(params.setSelectedCase).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('اختيار "حذف نهائي" (onConfirmDelete → handlePermanentDeleteCase)', () => {
+      it('بيحذف صف القضية فعليًا، يقفل المودال، ويسجّل النشاط', async () => {
+        mockDb.setResult('cases:delete', { error: null });
+        const targetCase = makeCase({ id: 'case-perm-1', title: 'قضية للحذف النهائي', type: 'مدني', client_id: 'client-1' });
+        const params = makeParams({ cases: [targetCase] });
+        const { handleDeleteCase } = useCaseActions(params);
+
+        await handleDeleteCase('case-perm-1');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmDelete();
+
+        expect(mockDb.deleteSpy).toHaveBeenCalledWith('cases');
+        expect(params.nav.closeModal).toHaveBeenCalledWith('delete');
+        expect(params.setDeleteConfirm).toHaveBeenCalledWith(null);
+        expect(toast).toHaveBeenCalledWith('🗑️ تم حذف القضية نهائياً');
+        expect(logActivity).toHaveBeenCalledWith(expect.anything(), 'حذف قضية نهائياً', expect.objectContaining({
+          entity_type: 'case', entity_id: 'case-perm-1',
+          case_name: 'قضية للحذف النهائي', case_type: 'مدني', client_name: 'أحمد محمد',
+        }));
+        expect(params.setSelectedCase).toHaveBeenCalledWith(null);
+      });
+
+      it('فشل الحذف النهائي → توست فشل، من غير logActivity أو تحديث state', async () => {
+        mockDb.setResult('cases:delete', { error: { message: 'delete failed' } });
+        const targetCase = makeCase({ id: 'case-perm-2' });
+        const params = makeParams({ cases: [targetCase] });
+        const { handleDeleteCase } = useCaseActions(params);
+
+        await handleDeleteCase('case-perm-2');
+        const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        await deleteConfirmArg.onConfirmDelete();
+
+        expect(toast).toHaveBeenCalledWith('❌ فشل حذف القضية نهائياً — تحقق من الاتصال وأعد المحاولة', true);
+        expect(logActivity).not.toHaveBeenCalled();
+        expect(params.setSelectedCase).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('handlePermanentDeleteCase (استدعاء مباشر — نفس الدالة اللي هتُستخدم من قسم الأرشيف لاحقًا)', () => {
+    it('نجاح → حذف الصف، توست نجاح، تسجيل نشاط، تحديث state المحلي', async () => {
+      mockDb.setResult('cases:delete', { error: null });
+      const targetCase = makeCase({ id: 'case-direct-1', title: 'قضية مؤرشفة قديمة' });
       const params = makeParams({ cases: [targetCase] });
-      const { handleDeleteCase } = useCaseActions(params);
+      const { handlePermanentDeleteCase } = useCaseActions(params);
 
-      await handleDeleteCase('case-archive-2');
-      const deleteConfirmArg = (params.setDeleteConfirm as ReturnType<typeof vi.fn>).mock.calls[0][0];
-      await deleteConfirmArg.onConfirm();
+      await handlePermanentDeleteCase('case-direct-1');
 
-      expect(toast).toHaveBeenCalledWith('❌ فشل أرشفة القضية — تحقق من الاتصال وأعد المحاولة', true);
-      expect(logActivity).not.toHaveBeenCalled();
-      expect(params.setSelectedCase).not.toHaveBeenCalled();
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('cases');
+      expect(toast).toHaveBeenCalledWith('🗑️ تم حذف القضية نهائياً');
+      expect(params.setCases).toHaveBeenCalled();
+    });
+
+    it('قضية عندها مستندات (storage_path) → بتحذف الملفات من bucket case-docs الأول قبل حذف صف القضية', async () => {
+      mockDb.setResult('case_documents:select', { data: [{ storage_path: 'tenant-1/doc-a.pdf' }, { storage_path: 'tenant-1/doc-b.pdf' }], error: null });
+      mockDb.setResult('cases:delete', { error: null });
+      const targetCase = makeCase({ id: 'case-with-docs' });
+      const params = makeParams({ cases: [targetCase] });
+      const { handlePermanentDeleteCase } = useCaseActions(params);
+
+      await handlePermanentDeleteCase('case-with-docs');
+
+      expect(mockDb.storageRemoveSpy).toHaveBeenCalledWith(['tenant-1/doc-a.pdf', 'tenant-1/doc-b.pdf']);
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('cases');
+      expect(toast).toHaveBeenCalledWith('🗑️ تم حذف القضية نهائياً');
+    });
+
+    it('قضية من غير مستندات → مفيش أي نداء لـ storage.remove خالص', async () => {
+      mockDb.setResult('case_documents:select', { data: [], error: null });
+      mockDb.setResult('cases:delete', { error: null });
+      const targetCase = makeCase({ id: 'case-no-docs' });
+      const params = makeParams({ cases: [targetCase] });
+      const { handlePermanentDeleteCase } = useCaseActions(params);
+
+      await handlePermanentDeleteCase('case-no-docs');
+
+      expect(mockDb.storageRemoveSpy).not.toHaveBeenCalled();
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('cases');
+    });
+
+    it('فشل التحقق من المستندات (case_documents:select) → توست فشل، من غير أي محاولة حذف قضية', async () => {
+      mockDb.setResult('case_documents:select', { data: null, error: { message: 'fetch failed' } });
+      const targetCase = makeCase({ id: 'case-docs-fetch-fail' });
+      const params = makeParams({ cases: [targetCase] });
+      const { handlePermanentDeleteCase } = useCaseActions(params);
+
+      await handlePermanentDeleteCase('case-docs-fetch-fail');
+
+      expect(toast).toHaveBeenCalledWith('❌ فشل التحقق من مستندات القضية — تحقق من الاتصال وأعد المحاولة', true);
+      expect(mockDb.deleteSpy).not.toHaveBeenCalledWith('cases');
+    });
+
+    it('فشل حذف بعض ملفات Storage → توست تحذير، لكن بيكمل حذف صف القضية عادي (مش حظر)', async () => {
+      mockDb.setResult('case_documents:select', { data: [{ storage_path: 'tenant-1/doc-a.pdf' }], error: null });
+      mockDb.setResult('case-docs:remove', { error: { message: 'storage delete failed' } });
+      mockDb.setResult('cases:delete', { error: null });
+      const targetCase = makeCase({ id: 'case-storage-fail' });
+      const params = makeParams({ cases: [targetCase] });
+      const { handlePermanentDeleteCase } = useCaseActions(params);
+
+      await handlePermanentDeleteCase('case-storage-fail');
+
+      expect(toast).toHaveBeenCalledWith('⚠️ تعذّر حذف بعض ملفات المستندات من التخزين — راجع bucket المستندات يدويًا', true);
+      expect(mockDb.deleteSpy).toHaveBeenCalledWith('cases');
+      expect(toast).toHaveBeenCalledWith('🗑️ تم حذف القضية نهائياً');
     });
   });
 
