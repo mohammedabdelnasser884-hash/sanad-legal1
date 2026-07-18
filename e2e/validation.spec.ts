@@ -17,7 +17,7 @@ test.describe('فاليديشن الحقول المطلوبة', () => {
     // مفيش أي كتابة في new-case-title — بنحاول نحفظ فورًا
     await page.getByTestId('new-case-save').click();
 
-    await expectToast(page, 'يرجى إدخال موضوع الدعوى');
+    await expectToast(page, 'يرجى إدخال موضوع ومسمى الدعوى');
     // الفورم لسه مفتوح (زرار الحفظ لسه ظاهر) — يعني ما اتقفلش زي الحفظ الناجح
     await expect(page.getByTestId('new-case-save')).toBeVisible();
   });
