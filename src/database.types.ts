@@ -418,7 +418,9 @@ export interface Database {
           last_sync_at: string | null
           created_at: string | null
           plaintiff: string | null
+          plaintiff_role: string | null
           defendant: string | null
+          defendant_role: string | null
           next_hearing: string | null
           court_floor: string | null
           court_hall: string | null
@@ -450,7 +452,9 @@ export interface Database {
           last_sync_at?: string | null
           created_at?: string | null
           plaintiff?: string | null
+          plaintiff_role?: string | null
           defendant?: string | null
+          defendant_role?: string | null
           next_hearing?: string | null
           court_floor?: string | null
           court_hall?: string | null
@@ -482,7 +486,9 @@ export interface Database {
           last_sync_at?: string | null
           created_at?: string | null
           plaintiff?: string | null
+          plaintiff_role?: string | null
           defendant?: string | null
+          defendant_role?: string | null
           next_hearing?: string | null
           court_floor?: string | null
           court_hall?: string | null
