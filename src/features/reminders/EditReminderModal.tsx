@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { I } from '../../constants';
 import { Inp } from '@/shared/ui/Inp';
 import DatePicker from '@/shared/ui/DatePicker';
@@ -22,7 +23,7 @@ interface EditReminderModalProps {
 function EditReminderModal({
   editTarget, setEditTarget, editForm, setEditForm, handleEdit, editSaving,
 }: EditReminderModalProps) {
-  return editTarget && React.createElement('div',{
+  return editTarget && createPortal(React.createElement('div',{
         className:"fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm",
         onClick:(e: React.MouseEvent<HTMLDivElement>) =>{ if(e.target===e.currentTarget) setEditTarget(null); }
     },
@@ -45,7 +46,7 @@ function EditReminderModal({
                 }, editSaving?React.createElement(I.Spin):React.createElement(I.Check), "حفظ التعديلات")
             )
         )
-    );
+    ), document.body);
 }
 
 export default EditReminderModal;
