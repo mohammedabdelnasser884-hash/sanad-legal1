@@ -313,6 +313,7 @@ export default function AdminPanel({ profile, lawyers, clients, fetchLawyers, co
         React.createElement('button',{
           key: t.id,
           onClick: () => setSection(t.id),
+          'data-testid': 'admin-section-' + t.id,
           className:'active:scale-[0.97] transition-all text-right',
           style:{
             background: section===t.id ? (t.activeBg||'rgba(96,165,250,0.04)') : 'rgba(255,255,255,0.02)',
