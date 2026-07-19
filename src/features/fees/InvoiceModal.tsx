@@ -16,13 +16,11 @@ function InvoiceModal({
   invoiceModal, setInvoiceModal, setDetailsFor, officeBrand, currency, printInvoice,
 }: InvoiceModalProps) {
   return invoiceModal && createPortal(React.createElement('div',{
-            className:"fixed z-[60] flex items-center justify-center px-3",
-            style:{background:'rgba(0,0,0,0.6)', top:'var(--app-header-h, 64px)', bottom:'var(--app-navbar-h, 80px)', left:0, right:0},
+            className:"fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm px-3",
             onClick:()=>{ const fid=invoiceModal?.fee?.id||null; setInvoiceModal(null); setDetailsFor(fid); }
         },
             React.createElement('div',{
-                className:"w-full max-w-sm bg-premium-card border border-premium-gold/30 rounded-2xl overflow-y-auto",
-                style:{maxHeight:'100%'},
+                className:"w-full max-w-sm bg-premium-card border border-premium-gold/30 rounded-2xl overflow-y-auto max-h-[90vh] slide-up",
                 onClick:(e: React.MouseEvent<HTMLDivElement>) =>e.stopPropagation()
             },
                 // ─ رأس المودال ─
