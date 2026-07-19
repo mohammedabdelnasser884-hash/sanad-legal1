@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { I } from '../../constants';
 import { formatArDate } from '../../shared/ui/arabicLocale';
 import type { ReminderRow } from '../../types';
@@ -21,7 +22,7 @@ interface ViewReminderModalProps {
 function ViewReminderModal({
   viewTarget, setViewTarget, handleToggleDone, setEditTarget, setEditForm, setConfirmDeleteTarget,
 }: ViewReminderModalProps) {
-  return viewTarget && React.createElement('div',{
+  return viewTarget && createPortal(React.createElement('div',{
         className:"fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm",
         onClick: () => setViewTarget(null)
     },
@@ -104,7 +105,7 @@ function ViewReminderModal({
                 }, React.createElement(I.Trash,{className:"w-3.5 h-3.5"}))
             )
         )
-    );
+    ), document.body);
 }
 
 export default ViewReminderModal;
