@@ -56,6 +56,32 @@ export async function createAndOpenCase(page: Page, title: string): Promise<void
   await page.getByTestId('case-detail-view').waitFor({ state: 'visible', timeout: 10_000 });
 }
 
+// خطوة 7+ (لوحة الأدمن / الأرشيف) — إنشاء قضية وأرشفتها (نفس خطوات
+// archive.spec.ts الأصلية بالحرف) عشان الاختبارات اللي محتاجة قضية
+// مؤرشفة كنقطة بداية (استرجاع / حذف نهائي من شاشة الأرشيف) متكررش
+// نفس التسلسل. بيسيب الصفحة بعد إغلاق شاشة تفاصيل القضية مباشرة.
+export async function createAndArchiveCase(page: Page, title: string): Promise<void> {
+  await createAndOpenCase(page, title);
+  await page.getByTestId('case-delete-trigger').click();
+  await page.getByTestId('case-delete-local-confirm').click();
+  await page.getByTestId('archive-confirm-choice-archive').click();
+  await page.getByTestId('archive-confirm-input').fill(title);
+  await page.getByTestId('archive-confirm-button').click();
+  await page.getByTestId('case-detail-view').waitFor({ state: 'hidden', timeout: 10_000 });
+}
+
+// خطوة 7+ — فتح شاشة "الأرشيف" جوه لوحة الإدارة (nav-more-toggle →
+// nav-more-admin → قسم الأرشيف)، وتحديد تبويب فرعي معيّن (قضايا/موكلين/أتعاب).
+export async function openAdminArchiveTab(
+  page: Page,
+  tab: 'cases' | 'clients' | 'fees' = 'cases'
+): Promise<void> {
+  await page.getByTestId('nav-more-toggle').click();
+  await page.getByTestId('nav-more-admin').click();
+  await page.getByTestId('admin-section-archive').click();
+  await page.getByTestId('archive-tab-' + tab).click();
+}
+
 // خطوة 6 (فاليديشن) — التأكد من ظهور رسالة توست بنص معيّن ولونها بيطابق
 // حالة الخطأ (نفس آلية toast() في shared/lib/notifications.ts — بتلوّن
 // الحدود/النص بالأحمر #f87171 لما isErr=true، وبتضيف class 'show').
