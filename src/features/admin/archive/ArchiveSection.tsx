@@ -70,6 +70,7 @@ function ArchiveRow({
   onDeleteClick: () => void;
 }) {
   return React.createElement('div',{
+    'data-testid': 'archive-row',
     className:"bg-premium-card border border-white/5 rounded-2xl overflow-hidden"
   },
     React.createElement('div',{className:"p-3 space-y-1"},
@@ -88,6 +89,7 @@ function ArchiveRow({
       React.createElement('button',{
         onClick: onRestore,
         disabled: isRestoring,
+        'data-testid': 'archive-row-restore',
         className:"flex items-center justify-center gap-1.5 py-2.5 bg-premium-card hover:bg-[#C9A84C]/10 transition-colors active:scale-95 disabled:opacity-50"
       },
         isRestoring
@@ -99,6 +101,7 @@ function ArchiveRow({
       ),
       React.createElement('button',{
         onClick: onDeleteClick,
+        'data-testid': 'archive-row-delete',
         className:"flex items-center justify-center gap-1.5 py-2.5 bg-premium-card hover:bg-rose-500/10 transition-colors active:scale-95"
       },
         React.createElement('span',{className:"text-xs"},"🗑"),
@@ -186,6 +189,7 @@ function ArchiveSection(props: ArchiveSectionProps) {
         ...tabs.map((t) => React.createElement('button',{
           key: t.id,
           onClick: () => setArchiveTab(t.id),
+          'data-testid': 'archive-tab-' + t.id,
           className:"flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-bold transition-colors active:scale-95",
           style: archiveTab===t.id
             ? {background:'rgba(129,140,248,0.14)', color:'#818cf8', border:'1px solid rgba(129,140,248,0.3)'}
@@ -318,6 +322,9 @@ function ArchiveSection(props: ArchiveSectionProps) {
       loading: deletingCase,
       onConfirm: () => handlePermanentDeleteCase(confirmDeleteCase.id),
       onCancel: () => setConfirmDeleteCase(null),
+      inputTestId: 'admin-archive-delete-input',
+      confirmTestId: 'admin-archive-delete-confirm',
+      cancelTestId: 'admin-archive-delete-cancel',
       deleteConsequences: [
         'سيُحذف نهائيًا: بيانات القضية، الجلسات، المستندات المرفوعة (والملفات الفعلية)، وأي عناصر أخرى تابعة للقضية فقط.',
         'الأتعاب والفواتير المرتبطة بالقضية تفضل محفوظة بالكامل — بس رابطها بالقضية بيتصفّر.',
@@ -333,6 +340,9 @@ function ArchiveSection(props: ArchiveSectionProps) {
       loading: deletingClient,
       onConfirm: () => handlePermanentDeleteClient(confirmDeleteClient.id),
       onCancel: () => setConfirmDeleteClient(null),
+      inputTestId: 'admin-archive-delete-input',
+      confirmTestId: 'admin-archive-delete-confirm',
+      cancelTestId: 'admin-archive-delete-cancel',
       deleteConsequences: [
         'سيُحذف نهائيًا: بيانات الموكل، ورسائل/جلسات/أكواد بوابة الموكل الخاصة به فقط.',
         'القضايا والأتعاب المرتبطة بالموكل تفضل محفوظة بالكامل — بس رابطها بالموكل بيتصفّر.',
@@ -348,6 +358,9 @@ function ArchiveSection(props: ArchiveSectionProps) {
       loading: deletingFee,
       onConfirm: () => handlePermanentDeleteFee(confirmDeleteFee.id),
       onCancel: () => setConfirmDeleteFee(null),
+      inputTestId: 'admin-archive-delete-input',
+      confirmTestId: 'admin-archive-delete-confirm',
+      cancelTestId: 'admin-archive-delete-cancel',
       deleteConsequences: [
         'سيُحذف نهائيًا: سجل الأتعاب ودفعاته المرتبطة به فقط.',
         'الفاتورة الصادرة (لو موجودة) تفضل محفوظة بالكامل — بس رابطها بالأتعاب بيتصفّر.',
