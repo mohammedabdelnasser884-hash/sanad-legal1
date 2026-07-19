@@ -8,7 +8,9 @@ import { Sel } from '@/shared/ui/Sel';
 import { db } from '../../supabaseClient';
 import { I, getCurrentTenantId } from '../../constants';
 import { showErrorToast } from '../../shared/lib/errorReporting';
+import { createPortal } from 'react-dom';
 import PdfViewerModal from '@/shared/modals/PdfViewerModal';
+import DeleteConfirmModal from '@/shared/modals/DeleteConfirmModal';
 import type { MappedCase, MappedClient } from '../../hooks/useAppData';
 import type { CaseDocumentRow } from '../../types';
 
@@ -36,6 +38,8 @@ function ArchiveTab({cases, clients}: ArchiveTabProps){
     const [showForm, setShowForm]         = useState(false);
     const [viewingDoc, setViewingDoc]     = useState<CaseDocumentRow | null>(null);
     const [deletingId, setDeletingId]     = useState<string | null>(null);
+    // ── مودال تأكيد الحذف (كان الحذف بيحصل فورًا من غير أي تأكيد — إصلاح) ──
+    const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<CaseDocumentRow | null>(null);
     const [sortBy, setSortBy]             = useState('date_desc');
     const fileInputRef = useRef<HTMLInputElement>(null);
     // FIX: كان البحث بيبعت طلب لقاعدة البيانات مع كل حرف بدون أي debounce
@@ -211,6 +215,22 @@ function ArchiveTab({cases, clients}: ArchiveTabProps){
     return React.createElement('div',{className:"space-y-4 fade-in"},
         viewingDoc && React.createElement(PdfViewerModal,{doc:viewingDoc, onClose:()=>setViewingDoc(null)}),
 
+        // ─ مودال تأكيد حذف المستند (حذف نهائي بس — مفيش أرشفة لملف منفرد) ─
+        confirmDeleteDoc && createPortal(React.createElement(DeleteConfirmModal,{
+            title:"حذف المستند",
+            itemName: confirmDeleteDoc.file_name || confirmDeleteDoc.original_name || 'المستند',
+            itemType:"المستند",
+            mode:"delete",
+            loading:false,
+            deleteConsequences:[
+                'سيُحذف الملف نهائيًا من التخزين ومن الأرشيف الرقمي.',
+                'لو كان مرتبطًا بقضية، هيختفي من صفحة تفاصيلها كمان.',
+                'لا يمكن التراجع عن هذا الإجراء ولا استرجاع الملف بعد الحذف.',
+            ],
+            onConfirm:()=>{ handleDelete(confirmDeleteDoc); setConfirmDeleteDoc(null); },
+            onCancel:()=>setConfirmDeleteDoc(null),
+        }), document.body),
+
         React.createElement('input',{
             ref:fileInputRef, type:'file',
             accept:'image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt',
@@ -318,7 +338,7 @@ function ArchiveTab({cases, clients}: ArchiveTabProps){
                             React.createElement('div',{className:"flex items-center gap-1 shrink-0"},
                                 canPreview&&React.createElement('button',{onClick:()=>setViewingDoc(doc),className:"w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/15 flex items-center justify-center text-purple-400 active:scale-90 text-sm"},"👁"),
                                 React.createElement('a',{href:doc.file_url as string,target:'_blank',rel:'noreferrer',className:"w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 active:scale-90"},React.createElement(I.Download,{className:"w-3.5 h-3.5"})),
-                                React.createElement('button',{onClick:()=>handleDelete(doc),disabled:deletingId===doc.id,className:"w-7 h-7 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-400/60 hover:text-rose-400 active:scale-90 disabled:opacity-40"},deletingId===doc.id?React.createElement(I.Spin):React.createElement(I.Trash,{className:"w-3.5 h-3.5"}))
+                                React.createElement('button',{onClick:()=>setConfirmDeleteDoc(doc),disabled:deletingId===doc.id,className:"w-7 h-7 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-400/60 hover:text-rose-400 active:scale-90 disabled:opacity-40"},deletingId===doc.id?React.createElement(I.Spin):React.createElement(I.Trash,{className:"w-3.5 h-3.5"}))
                             )
                         );
                     }),
