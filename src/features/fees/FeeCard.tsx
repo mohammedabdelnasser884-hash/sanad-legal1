@@ -87,12 +87,11 @@ function FeeCard({
                         ),
                         // ─ مودال التفاصيل الكاملة ─
                         detailsFor===fee.id && createPortal(React.createElement('div',{
-                            className:"fixed z-50 bg-premium-card border-t border-white/10 rounded-t-3xl shadow-2xl overflow-y-auto",
-                            style:{
-                                top:'calc(var(--app-header-h, 64px) + env(safe-area-inset-top, 0px))',
-                                bottom:'calc(var(--app-navbar-h, 80px) + env(safe-area-inset-bottom, 0px))',
-                                left:0, right:0,
-                            },
+                            className:"fixed inset-0 z-[70] flex items-end justify-center bg-black/80 backdrop-blur-sm",
+                            onClick:(e: React.MouseEvent<HTMLDivElement>) => { if(e.target===e.currentTarget) setDetailsFor(null); }
+                        },
+                        React.createElement('div',{
+                            className:"bg-premium-card w-full max-w-lg rounded-t-3xl border-t border-white/10 shadow-2xl overflow-y-auto no-scrollbar max-h-[90vh] slide-up",
                             onClick:(e: React.MouseEvent<HTMLDivElement>) =>e.stopPropagation()
                         },
                                 React.createElement('div',{className:"px-4 pt-4 pb-2"},
@@ -305,6 +304,7 @@ function FeeCard({
                                     },React.createElement(I.Trash))
                                   )
                         )
+                    )
                     )
                     )
                     , document.body)
